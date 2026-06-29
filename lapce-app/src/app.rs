@@ -3715,6 +3715,15 @@ fn window(window_data: WindowData) -> impl View {
 pub fn launch() {
     let cli = Cli::parse();
 
+    // Lightweight startup profiling: set LAPCE_STARTUP_TRACE=1 to print per-phase
+    // timings to stderr. No-op (one env lookup) otherwise.
+    let _startup = std::time::Instant::now();
+    let mark = |label: &str| {
+        if std::env::var_os("LAPCE_STARTUP_TRACE").is_some() {
+            eprintln!("[startup] {label}: {} ms", _startup.elapsed().as_millis());
+        }
+    };
+
     if !cli.wait {
         logging::panic_hook();
     }
@@ -3747,11 +3756,26 @@ pub fn launch() {
             )));
     }
 
+    mark("fonts");
     let stdin = std::io::stdin();
     if !stdin.is_terminal() {
-        trace!(TraceLevel::INFO, "Loading custom environment from shell");
-        load_shell_env();
+        // On Windows a GUI-launched process already inherits the full user/system
+        // environment from the registry, so spawning PowerShell just to read it
+        // back is redundant — and it costs ~125 ms of startup (PowerShell spin-up),
+        // about two-thirds of the time-to-window. Skip it by default; set
+        // LAPCE_LOAD_SHELL_ENV=1 to opt back in (e.g. if you rely on env vars
+        // exported from your PowerShell $PROFILE rather than the system PATH).
+        let load_env = if cfg!(windows) {
+            std::env::var_os("LAPCE_LOAD_SHELL_ENV").is_some()
+        } else {
+            true
+        };
+        if load_env {
+            trace!(TraceLevel::INFO, "Loading custom environment from shell");
+            load_shell_env();
+        }
     }
+    mark("shell_env");
 
     // small hack to unblock terminal if launched from it
     // launch it as a separate process that waits
@@ -3829,6 +3853,7 @@ pub fn launch() {
             std::process::exit(1);
         }
     };
+    mark("db");
     let scope = Scope::new();
     provide_context(db.clone());
 
@@ -3868,6 +3893,7 @@ pub fn launch() {
 
     // Restore scale from config
     window_scale.set(config.ui.scale());
+    mark("config");
 
     let config = scope.create_rw_signal(Arc::new(config));
     let app_data = AppData {
@@ -3884,6 +3910,7 @@ pub fn launch() {
     };
 
     let app = app_data.create_windows(db.clone(), cli.paths);
+    mark("windows");
 
     {
         let app_data = app_data.clone();
@@ -4013,6 +4040,7 @@ pub fn launch() {
         });
     }
 
+    mark("pre-run");
     app.on_event(move |event| match event {
         floem::AppEvent::WillTerminate => {
             app_data.app_terminated.set(true);

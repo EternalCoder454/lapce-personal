@@ -217,6 +217,44 @@ At ~226 MB the residency is dominated by the wgpu GPU renderer (glyph atlas,
 swapchain, embedded font/icon data) plus any LSP **child processes** (counted as
 separate processes — e.g. `rust-analyzer.exe` — and not reducible from here).
 
+### Startup time (optimised 2026-06-29)
+
+Profiled with `LAPCE_STARTUP_TRACE=1` (prints per-phase ms to stderr; release build,
+`--new --wait`, warm). Per-phase cost *before*:
+
+| Phase | This phase |
+| --- | --- |
+| fonts (embedded DejaVu) | ~12 ms |
+| **shell_env** (`load_shell_env`) | **~125 ms** |
+| db (`LapceDb::new`) | ~6 ms |
+| config (`LapceConfig::load`) | ~10 ms |
+| windows (`create_windows`) | ~9 ms |
+| floem/wgpu first frame | ~20 ms |
+| **time-to-window** | **~187 ms** |
+
+`load_shell_env()` spawns **PowerShell** (`Get-ChildItem env:`) to read the shell
+environment — on Windows that's redundant (a GUI process already inherits the full
+user/system env from the registry) and dominates startup. Worse, on the normal
+double-click path it ran **twice** (the parent process runs it, then relaunches
+itself with `--wait` and the child runs it again).
+
+**Fix:** skip the PowerShell probe on Windows by default (opt back in with
+`LAPCE_LOAD_SHELL_ENV=1`). Result: `shell_env` ~125 ms → ~4 ms, **time-to-window
+~187 ms → ~62 ms (~3x)**. Non-Windows behaviour is unchanged.
+
+Remaining startup is fonts (~12 ms) + floem/wgpu first frame (~20 ms); both are
+inherent and not worth chasing.
+
+### Edit / layout latency
+
+The `visual_line` criterion bench (`cargo bench -p lapce-app --bench visual_line`)
+is the regression guard for editor layout. Baseline hot paths: last-vline 17 ns,
+vline-of-offset 2.3 µs, and the wrapping cases 76–104 µs. These live in **floem's
+editor core** (a pinned git dep), so they're a measurement baseline rather than a
+place we can optimise without forking floem. Keystroke→buffer edits go through the
+rope (immutable, cheap) and incremental tree-sitter; nothing in our code stood out
+as wasteful, and edit latency is already in the µs range.
+
 **Ruled out (would hurt more than help):**
 - `panic = "abort"` — a panic in any worker thread (plugin/LSP/terminal/watcher)
   would take down the whole editor instead of just that thread. Frontend-stability risk.
