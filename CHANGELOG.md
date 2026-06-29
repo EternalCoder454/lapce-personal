@@ -4,6 +4,9 @@
 
 ### Features/Changes
 
+- Refresh dependencies via `cargo update` (353 packages within semver)
+- Vendor `wasi-experimental-http-wasmtime` under `third_party/` and constrain its `wasmtime` requirement to `14` (was `*`, which pulled in an incompatible wasmtime 37); keeps the proxy on wasmtime 14.0.4
+
 ### Bug Fixes
 
 ## 0.4.6

@@ -61,8 +61,10 @@ wasmtime-wasi = "14.0.0"
 wasi-common   = "14.0.0"
 
 [dependencies.wasi-experimental-http-wasmtime]
-git = "https://github.com/lapce/wasi-experimental-http"
-# path = "../../wasi-experimental-http/crates/wasi-experimental-http-wasmtime"
+# Vendored locally under third_party/ (forked from the lapce git crate) so we own
+# its wasmtime version constraint and the 14.0.4 `func_wrap` compatibility fix,
+# instead of an unpinned git dep whose `wasmtime = "*"` pulled in wasmtime 37.
+path = "../third_party/wasi-experimental-http-wasmtime"
 
 [target.'cfg(target_os = "macos")'.dependencies.locale_config]
 git    = "https://github.com/lapce/locale_config.git"

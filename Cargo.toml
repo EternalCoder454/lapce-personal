@@ -21,6 +21,9 @@ path = "lapce-proxy/src/bin/lapce-proxy.rs"
 
 [workspace]
 members = ["lapce-app", "lapce-proxy", "lapce-rpc", "lapce-core"]
+# Vendored path dependency of lapce-proxy; kept out of the workspace so it keeps
+# its own (upstream) package settings instead of inheriting workspace.package.
+exclude = ["third_party/wasi-experimental-http-wasmtime"]
 
 [workspace.package]
 version      = "0.4.6"

@@ -145,6 +145,26 @@ On Windows the standard MSVC toolchain is sufficient.
 - `[patch]` on `lsp-types` (locked for a debug-message feature), `regalloc2`, and `dpi` (works around a cargo-vendor duplicate). `lsp-types` is noted in-file as "lock to patch versions only."
 - `toml = "*"` — currently an unbounded version; worth pinning for reproducibility.
 
+### Stage 1 — DONE (2026-06-29)
+
+Ran a full `cargo update` (353 packages refreshed within their semver constraints) and
+verified the result. One genuine break surfaced and was fixed:
+
+- **Break:** the unpinned git dep `wasi-experimental-http-wasmtime` declares `wasmtime = "*"`.
+  Once `cargo update` made wasmtime **37.0.3** available, that wildcard grabbed it (nothing
+  else in the tree wanted 37), and wasmtime 37's stricter `Linker::func_wrap` (`T: 'static`)
+  failed to compile the crate (5× `E0310`).
+- **Fix (forward, not a downgrade):** vendored that crate into
+  [`third_party/wasi-experimental-http-wasmtime`](third_party/wasi-experimental-http-wasmtime),
+  changed its `wasmtime = "*"` → `"14"`, added the `T: 'static` bound to `add_to_linker`, and
+  repointed `lapce-proxy` at the local path (excluded from the workspace). The proxy stays on
+  the **latest 14.x (14.0.4)** and wasmtime 37 is gone from the tree entirely.
+- **Verified green:** `cargo fmt --all --check`, `cargo check --all-targets`,
+  `cargo clippy --all-targets` (warnings only, pre-existing), and `cargo test` — **38 tests
+  pass, 0 fail**. Baseline-vs-updated logs captured during the run.
+- **Note:** moving the proxy to wasmtime **37** is out of scope — it would require rewriting
+  `lapce-proxy/src/plugin/wasi.rs` against ~23 majors of API change. Separate project.
+
 ### Recommended staged approach
 
 Do these one stage at a time, running `cargo check --workspace` (and ideally a real
