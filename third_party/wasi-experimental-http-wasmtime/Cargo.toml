@@ -1,9 +1,9 @@
 # Vendored into Lapce Personal from https://github.com/lapce/wasi-experimental-http
-# (rev 21419eb785cb583ead180f25a9685fa16de7f326) so we can keep it compiling against
-# the wasmtime 14.x line. Local changes vs upstream:
-#   * src/lib.rs: `add_to_linker<T>` -> `add_to_linker<T: 'static>` for wasmtime 14.0.4
-#   * wasmtime/wasmtime-wasi/wasi-common: "*" -> "14" so the wildcard stops pulling
-#     in wasmtime 37, which would conflict with the proxy's 14.x API usage.
+# (rev 21419eb785cb583ead180f25a9685fa16de7f326). Local changes vs upstream:
+#   * src/lib.rs: `add_to_linker<T>` -> `add_to_linker<T: 'static>`.
+#   * wasmtime: "*" -> "46" (pinned to the major we build against); dropped the
+#     unused wasmtime-wasi / wasi-common deps. Ported to the wasmtime 46 API
+#     alongside the host in lapce-proxy/src/plugin/wasi.rs.
 [package]
     name        = "wasi-experimental-http-wasmtime"
     version     = "0.10.0"
@@ -27,6 +27,4 @@
     tokio = { version = "1", features = [ "full" ] }
     tracing = { version = "0.1", features = [ "log" ] }
     url = "2"
-    wasmtime = "14"
-    wasmtime-wasi = "14"
-    wasi-common = "14"
+    wasmtime = "46"

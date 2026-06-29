@@ -56,14 +56,15 @@ grep-matcher  = "0.1"
 grep-regex    = "0.1"
 
 # wasm
-wasmtime      = "14.0.0"
-wasmtime-wasi = "14.0.0"
-wasi-common   = "14.0.0"
+wasmtime         = "46.0.0"
+wasmtime-wasi    = "46.0.0"
+wasmtime-wasi-io = "46.0.0"
+bytes            = "1"
+tokio            = { version = "1", features = ["io-util"] }
 
 [dependencies.wasi-experimental-http-wasmtime]
-# Vendored locally under third_party/ (forked from the lapce git crate) so we own
-# its wasmtime version constraint and the 14.0.4 `func_wrap` compatibility fix,
-# instead of an unpinned git dep whose `wasmtime = "*"` pulled in wasmtime 37.
+# Vendored locally under third_party/ (forked from the lapce git crate); ported
+# to the wasmtime 46 API alongside the host in plugin/wasi.rs.
 path = "../third_party/wasi-experimental-http-wasmtime"
 
 [target.'cfg(target_os = "macos")'.dependencies.locale_config]

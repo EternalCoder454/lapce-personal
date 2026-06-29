@@ -278,11 +278,9 @@ that code/data is already excluded by `#[cfg]`/target gates. Note: `extra/proxy.
 Ran `cargo audit` (RustSec advisory DB) against `Cargo.lock`. 21 advisories initially;
 the actionable picture:
 
-- **wasmtime / wasi ecosystem (~17, incl. 2 "critical")** — by far the bulk. The two
-  9.0 advisories are a **Winch**-backend escape and an **aarch64 Cranelift** miscompile;
-  neither applies to this build (Lapce uses the default Cranelift backend on x86-64).
-  Fixing these means moving to a modern wasmtime — **explicitly out of scope** (see §5,
-  Stage 4 / wasm). Left untouched on purpose.
+- **wasmtime / wasi ecosystem (~17, incl. 2 "critical")** — **RESOLVED** by the
+  wasmtime 14 → 46 upgrade (see below). All wasmtime/wasi advisories cleared; the
+  remaining audit findings are git2 and the unmaintained-crate warnings.
 - **`time` (RUSTSEC-2026-0009, medium DoS)** — **FIXED.** Bumped MSRV 1.87 → 1.88 so the
   resolver could take `time` 0.3.51 (≥ 0.3.47).
 - **`git2` ×2 (potential UB)** — **no patched release exists yet** (no `Solution:` in the
@@ -297,6 +295,34 @@ license/ban checks too.
 > MSRV note: the bump to **1.88** means newer crate versions are now selectable. A future
 > blanket `cargo update` could therefore pull more than before — keep updates staged and
 > verified (see §5).
+
+## 5d. wasmtime 14 → 46 upgrade (2026-06-29)
+
+Upgraded the WASM plugin runtime from wasmtime **14.0.4** to **46.0.1** (latest stable).
+Motivation: it clears all outstanding wasmtime/wasi security advisories (~17, incl. 2
+critical). The WASI API was rewritten between these versions, so this touched two places:
+
+- **`lapce-proxy/src/plugin/wasi.rs`** — ported to the wasmtime 46 preview1 API:
+  `Store<WasiP1Ctx>`, `p1::add_to_linker_sync`, `WasiCtxBuilder::build_p1()`,
+  `preopened_dir(path, "/", DirPerms, FilePerms)`. The old `wasi_common` shared
+  `ReadPipe`/`WritePipe` were replaced by a custom `WasiPipe` that implements the 46
+  stream traits (`InputStream`/`OutputStream`/`Pollable`/`StdinStream`/`StdoutStream`)
+  directly over a shared `VecDeque`. An empty read returns `StreamError::Closed`, which
+  preview1 maps to a 0-byte read (EOF-per-call, fd stays open) — matching the old pipe.
+- **`third_party/wasi-experimental-http-wasmtime`** — only needed the `wasmtime = "46"`
+  bump (its `Caller`/`Memory`/`func_wrap` usage is stable); the `T: 'static` bound added
+  earlier still applies. Dropped its unused `wasmtime-wasi`/`wasi-common` deps.
+- Removed the `[patch.crates-io] regalloc2` pin (it was for wasmtime 14's cranelift).
+- New `lapce-proxy` deps: `wasmtime-wasi-io`, `bytes`, `tokio` (io-util).
+
+**Verified:** compiles + links, 38 tests pass, clippy clean (for this code). **Runtime:**
+launched the debug build on a Go project with the real `panekj.lapce-go` WASM plugin — it
+instantiated, read its env, and ran the JSON-RPC initialize handshake through the new
+pipes (`fd_read fd=0` / `fd_write fd=1` in the logs) with zero traps/panics.
+
+> Note: the MSRV bump to 1.88 makes clippy's `collapsible_if` fire on the codebase's
+> `if let X { if y }` patterns (let-chains are now stable) — a separate, mechanical
+> cleanup (`cargo clippy --fix`), unrelated to this upgrade.
 
 ## 6. Personalisation backlog (ideas)
 

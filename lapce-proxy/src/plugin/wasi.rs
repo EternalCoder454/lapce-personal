@@ -4,14 +4,15 @@ mod tests;
 use std::{
     collections::{HashMap, VecDeque},
     fs,
-    io::{Read, Seek, Write},
+    io::Read,
     path::{Path, PathBuf},
     process,
-    sync::{Arc, RwLock},
+    sync::Arc,
     thread,
 };
 
 use anyhow::{Result, anyhow};
+use bytes::Bytes;
 use jsonrpc_lite::{Id, Params};
 use lapce_core::directory::Directory;
 use lapce_rpc::{
@@ -29,8 +30,17 @@ use lsp_types::{
 use parking_lot::Mutex;
 use psp_types::{Notification, Request};
 use serde_json::Value;
+use tokio::io::{AsyncRead, AsyncWrite, empty};
 use wasi_experimental_http_wasmtime::{HttpCtx, HttpState};
-use wasmtime_wasi::WasiCtxBuilder;
+use wasmtime_wasi::{
+    DirPerms, FilePerms, WasiCtxBuilder,
+    cli::{IsTerminal, StdinStream, StdoutStream},
+    p1::{self, WasiP1Ctx},
+};
+use wasmtime_wasi_io::{
+    poll::Pollable,
+    streams::{InputStream, OutputStream, StreamError},
+};
 
 use super::{
     PluginCatalogRpcHandler, client_capabilities,
@@ -42,40 +52,93 @@ use super::{
 };
 use crate::plugin::psp::PluginServerRpcHandler;
 
-#[derive(Default)]
+/// A shared in-memory pipe wiring a plugin's stdio to the host so they can
+/// exchange JSON-RPC. Cloning shares the same underlying buffer, so the host
+/// can inject input (stdin) and drain output (stdout/stderr).
+///
+/// Implements the wasmtime-wasi (preview1) stream traits directly. An empty read
+/// returns `StreamError::Closed`, which the preview1 layer maps to a 0-byte read
+/// (EOF for that call) while keeping the fd open for the next message — matching
+/// the previous `wasi_common` pipe behaviour.
+#[derive(Clone, Default)]
 pub struct WasiPipe {
-    buffer: VecDeque<u8>,
+    buffer: Arc<Mutex<VecDeque<u8>>>,
 }
 
 impl WasiPipe {
     pub fn new() -> Self {
         Self::default()
     }
+
+    /// Host side: append a line of input for the guest to read from stdin.
+    fn host_write_line(&self, s: &str) {
+        let mut buf = self.buffer.lock();
+        buf.extend(s.as_bytes());
+        buf.push_back(b'\n');
+    }
+
+    /// Host side: drain everything the guest has written and return it as text.
+    fn host_take_string(&self) -> String {
+        let bytes: Vec<u8> = self.buffer.lock().drain(..).collect();
+        String::from_utf8_lossy(&bytes).into_owned()
+    }
 }
 
-impl Read for WasiPipe {
-    fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
-        let amt = std::cmp::min(buf.len(), self.buffer.len());
-        for (i, byte) in self.buffer.drain(..amt).enumerate() {
-            buf[i] = byte;
+#[wasmtime_wasi::async_trait]
+impl Pollable for WasiPipe {
+    async fn ready(&mut self) {}
+}
+
+#[wasmtime_wasi::async_trait]
+impl InputStream for WasiPipe {
+    fn read(&mut self, size: usize) -> Result<Bytes, StreamError> {
+        let mut buf = self.buffer.lock();
+        if buf.is_empty() {
+            // No buffered input: signal EOF for this read; the fd stays usable.
+            return Err(StreamError::Closed);
         }
-        Ok(amt)
+        let n = size.min(buf.len());
+        let bytes: Vec<u8> = buf.drain(..n).collect();
+        Ok(Bytes::from(bytes))
     }
 }
 
-impl Write for WasiPipe {
-    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
-        self.buffer.extend(buf);
-        Ok(buf.len())
-    }
-    fn flush(&mut self) -> std::io::Result<()> {
+#[wasmtime_wasi::async_trait]
+impl OutputStream for WasiPipe {
+    fn write(&mut self, bytes: Bytes) -> Result<(), StreamError> {
+        self.buffer.lock().extend(bytes.iter().copied());
         Ok(())
     }
+    fn flush(&mut self) -> Result<(), StreamError> {
+        Ok(())
+    }
+    fn check_write(&mut self) -> Result<usize, StreamError> {
+        Ok(usize::MAX)
+    }
 }
 
-impl Seek for WasiPipe {
-    fn seek(&mut self, _pos: std::io::SeekFrom) -> std::io::Result<u64> {
-        Err(std::io::Error::other("can not seek in a pipe"))
+impl IsTerminal for WasiPipe {
+    fn is_terminal(&self) -> bool {
+        false
+    }
+}
+
+impl StdinStream for WasiPipe {
+    // Unused: `p2_stream` (overridden below) is what the preview1 layer uses.
+    fn async_stream(&self) -> Box<dyn AsyncRead + Send + Sync> {
+        Box::new(empty())
+    }
+    fn p2_stream(&self) -> Box<dyn InputStream> {
+        Box::new(self.clone())
+    }
+}
+
+impl StdoutStream for WasiPipe {
+    fn async_stream(&self) -> Box<dyn AsyncWrite + Send + Sync> {
+        Box::new(empty())
+    }
+    fn p2_stream(&self) -> Box<dyn OutputStream> {
+        Box::new(self.clone())
     }
 }
 
@@ -426,8 +489,8 @@ pub fn start_volt(
             .as_ref()
             .ok_or_else(|| anyhow!("no wasm in plugin"))?,
     )?;
-    let mut linker = wasmtime::Linker::new(&engine);
-    wasmtime_wasi::add_to_linker(&mut linker, |s| s)?;
+    let mut linker: wasmtime::Linker<WasiP1Ctx> = wasmtime::Linker::new(&engine);
+    p1::add_to_linker_sync(&mut linker, |cx| cx)?;
     HttpState::new()?.add_to_linker(&mut linker, |_| HttpCtx {
         allowed_hosts: Some(vec!["insecure:allow-all".to_string()]),
         max_concurrent_requests: Some(100),
@@ -461,37 +524,26 @@ pub fn start_volt(
     #[cfg(not(target_os = "linux"))]
     let volt_libc = "";
 
-    let stdin = Arc::new(RwLock::new(WasiPipe::new()));
-    let stdout = Arc::new(RwLock::new(WasiPipe::new()));
-    let stderr = Arc::new(RwLock::new(WasiPipe::new()));
-    let wasi = WasiCtxBuilder::new()
-        .inherit_env()?
-        .env("VOLT_OS", std::env::consts::OS)?
-        .env("VOLT_ARCH", std::env::consts::ARCH)?
-        .env("VOLT_LIBC", volt_libc)?
+    let stdin = WasiPipe::new();
+    let stdout = WasiPipe::new();
+    let stderr = WasiPipe::new();
+    let mut builder = WasiCtxBuilder::new();
+    builder
+        .inherit_env()
+        .env("VOLT_OS", std::env::consts::OS)
+        .env("VOLT_ARCH", std::env::consts::ARCH)
+        .env("VOLT_LIBC", volt_libc)
         .env(
             "VOLT_URI",
             Url::from_directory_path(volt_path)
                 .map_err(|_| anyhow!("can't convert folder path to uri"))?
                 .as_ref(),
-        )?
-        .stdin(Box::new(wasi_common::pipe::ReadPipe::from_shared(
-            stdin.clone(),
-        )))
-        .stdout(Box::new(wasi_common::pipe::WritePipe::from_shared(
-            stdout.clone(),
-        )))
-        .stderr(Box::new(wasi_common::pipe::WritePipe::from_shared(
-            stderr.clone(),
-        )))
-        .preopened_dir(
-            wasmtime_wasi::Dir::open_ambient_dir(
-                volt_path,
-                wasmtime_wasi::ambient_authority(),
-            )?,
-            "/",
-        )?
-        .build();
+        )
+        .stdin(stdin.clone())
+        .stdout(stdout.clone())
+        .stderr(stderr.clone())
+        .preopened_dir(volt_path, "/", DirPerms::all(), FilePerms::all())?;
+    let wasi = builder.build_p1();
     let mut store = wasmtime::Store::new(&engine, wasi);
 
     let (io_tx, io_rx) = crossbeam_channel::unbounded();
@@ -499,26 +551,23 @@ pub fn start_volt(
 
     let local_rpc = rpc.clone();
     let local_stdin = stdin.clone();
+    let local_stdout = stdout.clone();
     let volt_name = format!("volt {}", meta.name);
     linker.func_wrap("lapce", "host_handle_rpc", move || {
-        if let Ok(msg) = wasi_read_string(&stdout) {
-            if let Some(resp) =
-                handle_plugin_server_message(&local_rpc, &msg, &volt_name)
-            {
-                if let Ok(msg) = serde_json::to_string(&resp) {
-                    if let Err(err) = writeln!(local_stdin.write().unwrap(), "{msg}")
-                    {
-                        tracing::error!("{:?}", err);
-                    }
-                }
+        let msg = local_stdout.host_take_string();
+        if let Some(resp) =
+            handle_plugin_server_message(&local_rpc, &msg, &volt_name)
+        {
+            if let Ok(msg) = serde_json::to_string(&resp) {
+                local_stdin.host_write_line(&msg);
             }
         }
     })?;
     let plugin_meta = meta.clone();
+    let local_stderr = stderr.clone();
     linker.func_wrap("lapce", "host_handle_stderr", move || {
-        if let Ok(msg) = wasi_read_string(&stderr) {
-            tracing_log::log::log!(target: &format!("lapce_proxy::plugin::wasi::{}::{}", plugin_meta.author, plugin_meta.name), tracing_log::log::Level::Debug, "{msg}");
-        }
+        let msg = local_stderr.host_take_string();
+        tracing_log::log::log!(target: &format!("lapce_proxy::plugin::wasi::{}::{}", plugin_meta.author, plugin_meta.name), tracing_log::log::Level::Debug, "{msg}");
     })?;
     linker.module(&mut store, "", &module)?;
     let local_rpc = rpc.clone();
@@ -542,9 +591,7 @@ pub fn start_volt(
                     break;
                 }
                 if let Ok(msg) = serde_json::to_string(&msg) {
-                    if let Err(err) = writeln!(stdin.write().unwrap(), "{msg}") {
-                        tracing::error!("{:?}", err);
-                    }
+                    stdin.host_write_line(&msg);
                 }
                 if let Err(err) = handle_rpc.call(&mut store, ()) {
                     tracing::error!("{:?}", err);
@@ -600,12 +647,6 @@ pub fn start_volt(
         rpc.shutdown();
     }
     Ok(())
-}
-
-fn wasi_read_string(stdout: &Arc<RwLock<WasiPipe>>) -> Result<String> {
-    let mut buf = String::new();
-    stdout.write().unwrap().read_to_string(&mut buf)?;
-    Ok(buf)
 }
 
 fn unflatten_map(map: &HashMap<String, serde_json::Value>) -> serde_json::Value {
