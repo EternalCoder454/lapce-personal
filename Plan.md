@@ -273,6 +273,31 @@ that code/data is already excluded by `#[cfg]`/target gates. Note: `extra/proxy.
 
 ---
 
+## 5c. Security audit (2026-06-29)
+
+Ran `cargo audit` (RustSec advisory DB) against `Cargo.lock`. 21 advisories initially;
+the actionable picture:
+
+- **wasmtime / wasi ecosystem (~17, incl. 2 "critical")** — by far the bulk. The two
+  9.0 advisories are a **Winch**-backend escape and an **aarch64 Cranelift** miscompile;
+  neither applies to this build (Lapce uses the default Cranelift backend on x86-64).
+  Fixing these means moving to a modern wasmtime — **explicitly out of scope** (see §5,
+  Stage 4 / wasm). Left untouched on purpose.
+- **`time` (RUSTSEC-2026-0009, medium DoS)** — **FIXED.** Bumped MSRV 1.87 → 1.88 so the
+  resolver could take `time` 0.3.51 (≥ 0.3.47).
+- **`git2` ×2 (potential UB)** — **no patched release exists yet** (no `Solution:` in the
+  advisory). Nothing to upgrade to; revisit when upstream ships a fix.
+- **~11 "unmaintained" warnings** (`bincode`, `ttf-parser`, `paste`, `mach`, `fxhash`,
+  `rustls-pemfile`, …) — all transitive via floem/wasmtime, not directly fixable here, low risk.
+
+Re-run `cargo audit` after dependency changes. To regenerate: `cargo install cargo-audit`
+then `cargo audit`. The project also ships a `deny.toml` for `cargo deny` if you want
+license/ban checks too.
+
+> MSRV note: the bump to **1.88** means newer crate versions are now selectable. A future
+> blanket `cargo update` could therefore pull more than before — keep updates staged and
+> verified (see §5).
+
 ## 6. Personalisation backlog (ideas)
 
 Since this is a personal fork, candidate tweaks to make it mine:

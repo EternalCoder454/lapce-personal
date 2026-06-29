@@ -11,6 +11,7 @@
 - Disable the auto-updater by default (this is built from source): no startup cleanup pass and no hourly GitHub release-polling thread. Re-enable with `--features updater`
 - Replace the deprecated `slotmap::HopSlotMap` with `DenseSlotMap` in the syntax layer store
 - Fix the outstanding clippy lints across the workspace (map `.values()`, `sort_by_key`, match guards, redundant `into_iter`)
+- Bump MSRV 1.87 → 1.88 and update `time` 0.3.45 → 0.3.51, clearing RUSTSEC-2026-0009 (DoS via stack exhaustion)
 
 ### Bug Fixes
 

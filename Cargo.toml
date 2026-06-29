@@ -28,7 +28,10 @@ exclude = ["third_party/wasi-experimental-http-wasmtime"]
 [workspace.package]
 version      = "0.4.6"
 edition      = "2024"
-rust-version = "1.87.0"
+# Bumped from 1.87 so the MSRV-aware resolver can pick `time` >= 0.3.47, which
+# patches RUSTSEC-2026-0009 (DoS via stack exhaustion). Safe for this personal
+# build (local toolchain is well ahead).
+rust-version = "1.88.0"
 license      = "Apache-2.0"
 homepage     = "https://lapce.dev"
 authors      = ["Dongdong Zhou <dzhou121@gmail.com>"]
