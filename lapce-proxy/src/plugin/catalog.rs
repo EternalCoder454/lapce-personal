@@ -239,39 +239,38 @@ impl PluginCatalog {
                     return Some(id.clone());
                 }
 
-                if let Some(workspace) = self.workspace.as_ref() {
-                    if let Some(globs) = meta
+                if let Some(workspace) = self.workspace.as_ref()
+                    && let Some(globs) = meta
                         .activation
                         .as_ref()
                         .and_then(|a| a.workspace_contains.as_ref())
-                    {
-                        let mut builder = globset::GlobSetBuilder::new();
-                        for glob in globs {
-                            match globset::Glob::new(glob) {
-                                Ok(glob) => {
-                                    builder.add(glob);
-                                }
-                                Err(err) => {
-                                    tracing::error!("{:?}", err);
-                                }
-                            }
-                        }
-                        match builder.build() {
-                            Ok(matcher) => {
-                                if !matcher.is_empty() {
-                                    for entry in walkdir::WalkDir::new(workspace)
-                                        .into_iter()
-                                        .flatten()
-                                    {
-                                        if matcher.is_match(entry.path()) {
-                                            return Some(id.clone());
-                                        }
-                                    }
-                                }
+                {
+                    let mut builder = globset::GlobSetBuilder::new();
+                    for glob in globs {
+                        match globset::Glob::new(glob) {
+                            Ok(glob) => {
+                                builder.add(glob);
                             }
                             Err(err) => {
                                 tracing::error!("{:?}", err);
                             }
+                        }
+                    }
+                    match builder.build() {
+                        Ok(matcher) => {
+                            if !matcher.is_empty() {
+                                for entry in walkdir::WalkDir::new(workspace)
+                                    .into_iter()
+                                    .flatten()
+                                {
+                                    if matcher.is_match(entry.path()) {
+                                        return Some(id.clone());
+                                    }
+                                }
+                            }
+                        }
+                        Err(err) => {
+                            tracing::error!("{:?}", err);
                         }
                     }
                 }
@@ -517,14 +516,12 @@ impl PluginCatalog {
 
                 self.plugins.insert(plugin.plugin_id, plugin);
 
-                if let Some(spawned_by) = spawned_by {
-                    if let Some(plugin) = self.plugins.get(&spawned_by) {
-                        plugin.handle_rpc(PluginServerRpc::Handler(
-                            PluginHandlerNotification::SpawnedPluginLoaded {
-                                plugin_id,
-                            },
-                        ));
-                    }
+                if let Some(spawned_by) = spawned_by
+                    && let Some(plugin) = self.plugins.get(&spawned_by)
+                {
+                    plugin.handle_rpc(PluginServerRpc::Handler(
+                        PluginHandlerNotification::SpawnedPluginLoaded { plugin_id },
+                    ));
                 }
             }
             InstallVolt(volt) => {
@@ -641,12 +638,11 @@ impl PluginCatalog {
                 process_id,
                 term_id,
             } => {
-                if let Some(dap) = self.daps.get(&dap_id) {
-                    if let Err(err) =
+                if let Some(dap) = self.daps.get(&dap_id)
+                    && let Err(err) =
                         dap.termain_process_tx.send((term_id, process_id))
-                    {
-                        tracing::error!("{:?}", err);
-                    }
+                {
+                    tracing::error!("{:?}", err);
                 }
             }
             DapContinue { dap_id, thread_id } => {

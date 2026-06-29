@@ -529,14 +529,12 @@ impl Iterator for HighlightIter<'_> {
                 // If any previous highlight ends before this node starts, then before
                 // processing this capture, emit the source code up until the end of the
                 // previous highlight, and an end event for that highlight.
-                if let Some(end_byte) = layer.highlight_end_stack.last().cloned() {
-                    if end_byte <= range.start {
-                        layer.highlight_end_stack.pop();
-                        return self.emit_event(
-                            end_byte,
-                            Some(HighlightEvent::HighlightEnd),
-                        );
-                    }
+                if let Some(end_byte) = layer.highlight_end_stack.last().cloned()
+                    && end_byte <= range.start
+                {
+                    layer.highlight_end_stack.pop();
+                    return self
+                        .emit_event(end_byte, Some(HighlightEvent::HighlightEnd));
                 }
             }
             // If there are no more captures, then emit any remaining highlight end events.
@@ -656,14 +654,12 @@ impl Iterator for HighlightIter<'_> {
             // a different layer, then skip over this one.
             if let Some((last_start, last_end, last_depth)) =
                 self.last_highlight_range
+                && range.start == last_start
+                && range.end == last_end
+                && layer.depth < last_depth
             {
-                if range.start == last_start
-                    && range.end == last_end
-                    && layer.depth < last_depth
-                {
-                    self.sort_layers();
-                    continue 'main;
-                }
+                self.sort_layers();
+                continue 'main;
             }
 
             // If the current node was found to be a local variable, then skip over any

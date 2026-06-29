@@ -444,10 +444,10 @@ impl EditorData {
         let deltas =
             batch(|| doc.do_edit(&mut cursor, cmd, modal, &mut register, smart_tab));
 
-        if !deltas.is_empty() {
-            if let Some(data) = yank_data {
-                register.add_delete(data);
-            }
+        if !deltas.is_empty()
+            && let Some(data) = yank_data
+        {
+            register.add_delete(data);
         }
 
         self.editor.cursor.set(cursor);
@@ -1299,8 +1299,7 @@ impl EditorData {
                 if let Ok(ProxyResponse::GetDefinitionResponse {
                     definition, ..
                 }) = result
-                {
-                    if let Some(location) = match definition {
+                    && let Some(location) = match definition {
                         GotoDefinitionResponse::Scalar(location) => Some(location),
                         GotoDefinitionResponse::Array(locations) => {
                             if !locations.is_empty() {
@@ -1316,58 +1315,54 @@ impl EditorData {
                                 range: location_link.target_selection_range,
                             })
                         }
-                    } {
-                        if location.range.start == start_position {
-                            proxy.get_references(
-                                path.clone(),
-                                position,
-                                move |result| {
-                                    if let Ok(
-                                        ProxyResponse::GetReferencesResponse {
-                                            references,
-                                        },
-                                    ) = result
-                                    {
-                                        if references.is_empty() {
-                                            return;
-                                        }
-                                        if references.len() == 1 {
-                                            let location = &references[0];
-                                            send(DefinitionOrReference::Location(
-                                                EditorLocation {
-                                                    path: path_from_url(
-                                                        &location.uri,
-                                                    ),
-                                                    position: Some(
-                                                        EditorPosition::Position(
-                                                            location.range.start,
-                                                        ),
-                                                    ),
-                                                    scroll_offset: None,
-                                                    ignore_unconfirmed: false,
-                                                    same_editor_tab: false,
-                                                },
-                                            ));
-                                        } else {
-                                            send(DefinitionOrReference::References(
-                                                references,
-                                            ));
-                                        }
+                    }
+                {
+                    if location.range.start == start_position {
+                        proxy.get_references(
+                            path.clone(),
+                            position,
+                            move |result| {
+                                if let Ok(ProxyResponse::GetReferencesResponse {
+                                    references,
+                                }) = result
+                                {
+                                    if references.is_empty() {
+                                        return;
                                     }
-                                },
-                            );
-                        } else {
-                            let path = path_from_url(&location.uri);
-                            send(DefinitionOrReference::Location(EditorLocation {
-                                path,
-                                position: Some(EditorPosition::Position(
-                                    location.range.start,
-                                )),
-                                scroll_offset: None,
-                                ignore_unconfirmed: false,
-                                same_editor_tab: false,
-                            }));
-                        }
+                                    if references.len() == 1 {
+                                        let location = &references[0];
+                                        send(DefinitionOrReference::Location(
+                                            EditorLocation {
+                                                path: path_from_url(&location.uri),
+                                                position: Some(
+                                                    EditorPosition::Position(
+                                                        location.range.start,
+                                                    ),
+                                                ),
+                                                scroll_offset: None,
+                                                ignore_unconfirmed: false,
+                                                same_editor_tab: false,
+                                            },
+                                        ));
+                                    } else {
+                                        send(DefinitionOrReference::References(
+                                            references,
+                                        ));
+                                    }
+                                }
+                            },
+                        );
+                    } else {
+                        let path = path_from_url(&location.uri);
+                        send(DefinitionOrReference::Location(EditorLocation {
+                            path,
+                            position: Some(EditorPosition::Position(
+                                location.range.start,
+                            )),
+                            scroll_offset: None,
+                            ignore_unconfirmed: false,
+                            same_editor_tab: false,
+                        }));
                     }
                 }
             },
@@ -1401,30 +1396,28 @@ impl EditorData {
             path,
             position,
             create_ext_action(self.scope, move |result| {
-                if let Ok(ProxyResponse::ShowCallHierarchyResponse {
-                    items, ..
-                }) = result
+                if let Ok(ProxyResponse::ShowCallHierarchyResponse { items, .. }) =
+                    result
+                    && let Some(item) = items.and_then(|x| x.into_iter().next())
                 {
-                    if let Some(item) = items.and_then(|x| x.into_iter().next()) {
-                        let root = scope.create_rw_signal(CallHierarchyItemData {
-                            view_id: ViewId::new(),
-                            item: Rc::new(item),
-                            from_range: range,
-                            init: false,
-                            open: scope.create_rw_signal(true),
-                            children: scope.create_rw_signal(Vec::with_capacity(0)),
-                        });
-                        let item = root;
-                        window_tab_data.call_hierarchy_data.root.update(|x| {
-                            *x = Some(root);
-                        });
-                        window_tab_data.show_panel(PanelKind::CallHierarchy);
-                        window_tab_data.common.internal_command.send(
-                            InternalCommand::CallHierarchyIncoming {
-                                item_id: item.get_untracked().view_id,
-                            },
-                        );
-                    }
+                    let root = scope.create_rw_signal(CallHierarchyItemData {
+                        view_id: ViewId::new(),
+                        item: Rc::new(item),
+                        from_range: range,
+                        init: false,
+                        open: scope.create_rw_signal(true),
+                        children: scope.create_rw_signal(Vec::with_capacity(0)),
+                    });
+                    let item = root;
+                    window_tab_data.call_hierarchy_data.root.update(|x| {
+                        *x = Some(root);
+                    });
+                    window_tab_data.show_panel(PanelKind::CallHierarchy);
+                    window_tab_data.common.internal_command.send(
+                        InternalCommand::CallHierarchyIncoming {
+                            item_id: item.get_untracked().view_id,
+                        },
+                    );
                 }
             }),
         );
@@ -2298,17 +2291,17 @@ impl EditorData {
         let code_actions = doc
             .code_actions()
             .with_untracked(|c| c.get(&offset).cloned());
-        if let Some((plugin_id, code_actions)) = code_actions {
-            if !code_actions.is_empty() {
-                self.common.internal_command.send(
-                    InternalCommand::ShowCodeActions {
-                        offset,
-                        mouse_click,
-                        plugin_id,
-                        code_actions,
-                    },
-                );
-            }
+        if let Some((plugin_id, code_actions)) = code_actions
+            && !code_actions.is_empty()
+        {
+            self.common
+                .internal_command
+                .send(InternalCommand::ShowCodeActions {
+                    offset,
+                    mouse_click,
+                    plugin_id,
+                    code_actions,
+                });
         }
     }
 
@@ -3073,12 +3066,11 @@ impl EditorData {
                                 return visual_line + line - range.start;
                             }
                             visual_line += range.len();
-                            if is_right {
-                                if let Some(DiffLines::Left(r)) = last_change {
-                                    let len = r.len() - r.len().min(range.len());
-                                    if len > 0 {
-                                        visual_line += len;
-                                    }
+                            if is_right && let Some(DiffLines::Left(r)) = last_change
+                            {
+                                let len = r.len() - r.len().min(range.len());
+                                if len > 0 {
+                                    visual_line += len;
                                 }
                             }
                         }
@@ -3171,18 +3163,17 @@ impl EditorData {
                             }
                             current_visual_line += len;
                             actual_line += len;
-                            if is_right {
-                                if let Some(DiffLines::Left(r)) = last_change {
-                                    let len = r.len() - r.len().min(range.len());
-                                    if len > 0 {
-                                        current_visual_line += len;
-                                        if current_visual_line > visual_line {
-                                            return if bottom_affinity {
-                                                actual_line
-                                            } else {
-                                                actual_line - range.len()
-                                            };
-                                        }
+                            if is_right && let Some(DiffLines::Left(r)) = last_change
+                            {
+                                let len = r.len() - r.len().min(range.len());
+                                if len > 0 {
+                                    current_visual_line += len;
+                                    if current_visual_line > visual_line {
+                                        return if bottom_affinity {
+                                            actual_line
+                                        } else {
+                                            actual_line - range.len()
+                                        };
                                     }
                                 }
                             }
@@ -3683,20 +3674,19 @@ pub(crate) fn compute_screen_lines(
                         y_idx += height;
 
                         if y_idx < min_vline.get() {
-                            if is_right {
-                                if let Some(DiffLines::Left(r)) = last_change {
-                                    // TODO: count vline count in the other editor since this is skipping an amount dependent on those vlines
-                                    let len = r.len() - r.len().min(range.len());
-                                    if len > 0 {
-                                        diff_sections.push(DiffSection {
-                                            y_idx,
-                                            height: len,
-                                            kind: DiffSectionKind::NoCode,
-                                        });
-                                        y_idx += len;
-                                    }
-                                };
-                            }
+                            if is_right && let Some(DiffLines::Left(r)) = last_change
+                            {
+                                // TODO: count vline count in the other editor since this is skipping an amount dependent on those vlines
+                                let len = r.len() - r.len().min(range.len());
+                                if len > 0 {
+                                    diff_sections.push(DiffSection {
+                                        y_idx,
+                                        height: len,
+                                        kind: DiffSectionKind::NoCode,
+                                    });
+                                    y_idx += len;
+                                }
+                            };
                             last_change = Some(change);
                             continue;
                         }
@@ -3740,20 +3730,18 @@ pub(crate) fn compute_screen_lines(
                             }
                         }
 
-                        if is_right {
-                            if let Some(DiffLines::Left(r)) = last_change {
-                                // TODO: count vline count in the other editor since this is skipping an amount dependent on those vlines
-                                let len = r.len() - r.len().min(range.len());
-                                if len > 0 {
-                                    diff_sections.push(DiffSection {
-                                        y_idx,
-                                        height: len,
-                                        kind: DiffSectionKind::NoCode,
-                                    });
-                                    y_idx += len;
-                                }
-                            };
-                        }
+                        if is_right && let Some(DiffLines::Left(r)) = last_change {
+                            // TODO: count vline count in the other editor since this is skipping an amount dependent on those vlines
+                            let len = r.len() - r.len().min(range.len());
+                            if len > 0 {
+                                diff_sections.push(DiffSection {
+                                    y_idx,
+                                    height: len,
+                                    kind: DiffSectionKind::NoCode,
+                                });
+                                y_idx += len;
+                            }
+                        };
                     }
                     (_, DiffLines::Both(bothinfo)) => {
                         let start = if is_right {
@@ -3793,28 +3781,26 @@ pub(crate) fn compute_screen_lines(
                             }
 
                             // Skip over the lines
-                            if let Some(skip) = bothinfo.skip.as_ref() {
-                                if Some(skip.start) == line.checked_sub(start) {
-                                    y_idx += 1;
+                            if let Some(skip) = bothinfo.skip.as_ref()
+                                && Some(skip.start) == line.checked_sub(start)
+                            {
+                                y_idx += 1;
 
-                                    // restart iterator after the skip
-                                    let start_rvline = lines.rvline_of_line(
+                                // restart iterator after the skip
+                                let start_rvline = lines
+                                    .rvline_of_line(&text_prov, start + skip.end);
+
+                                iter = lines
+                                    .iter_rvlines_init(
                                         &text_prov,
-                                        start + skip.end,
-                                    );
+                                        cache_rev,
+                                        config_id,
+                                        start_rvline,
+                                        false,
+                                    )
+                                    .peekable();
 
-                                    iter = lines
-                                        .iter_rvlines_init(
-                                            &text_prov,
-                                            cache_rev,
-                                            config_id,
-                                            start_rvline,
-                                            false,
-                                        )
-                                        .peekable();
-
-                                    continue;
-                                }
+                                continue;
                             }
 
                             // Add the vline if it is within view

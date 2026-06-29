@@ -239,12 +239,10 @@ impl DapClient {
                 let all_threads_stopped =
                     stopped.all_threads_stopped.unwrap_or_default();
                 let mut stack_frames = HashMap::new();
-                if all_threads_stopped {
-                    if let Ok(response) = self.dap_rpc.threads() {
-                        for thread in response.threads {
-                            if let Ok(frames) = self.dap_rpc.stack_trace(thread.id) {
-                                stack_frames.insert(thread.id, frames.stack_frames);
-                            }
+                if all_threads_stopped && let Ok(response) = self.dap_rpc.threads() {
+                    for thread in response.threads {
+                        if let Ok(frames) = self.dap_rpc.stack_trace(thread.id) {
+                            stack_frames.insert(thread.id, frames.stack_frames);
                         }
                     }
                 }
@@ -260,13 +258,13 @@ impl DapClient {
                     .and_then(|stack_frames| stack_frames.first());
 
                 let mut vars = Vec::new();
-                if let Some(frame) = active_frame {
-                    if let Ok(scopes) = self.dap_rpc.scopes(frame.id) {
-                        for scope in scopes {
-                            let result =
-                                self.dap_rpc.variables(scope.variables_reference);
-                            vars.push((scope, result.unwrap_or_default()));
-                        }
+                if let Some(frame) = active_frame
+                    && let Ok(scopes) = self.dap_rpc.scopes(frame.id)
+                {
+                    for scope in scopes {
+                        let result =
+                            self.dap_rpc.variables(scope.variables_reference);
+                        vars.push((scope, result.unwrap_or_default()));
                     }
                 }
 

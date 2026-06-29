@@ -264,26 +264,24 @@ impl DapData {
         current_stack_traces.retain(|t, _| stack_traces.contains_key(t));
         for (thread_id, frames) in stack_traces {
             let is_main_thread = main_thread_id.as_ref() == Some(thread_id);
-            if is_main_thread {
-                if let Some(frame) = frames.first() {
-                    if let Some(path) =
-                        frame.source.as_ref().and_then(|source| source.path.clone())
-                    {
-                        self.common.internal_command.send(
-                            InternalCommand::JumpToLocation {
-                                location: EditorLocation {
-                                    path,
-                                    position: Some(EditorPosition::Line(
-                                        frame.line.saturating_sub(1),
-                                    )),
-                                    scroll_offset: None,
-                                    ignore_unconfirmed: false,
-                                    same_editor_tab: false,
-                                },
-                            },
-                        );
-                    }
-                }
+            if is_main_thread
+                && let Some(frame) = frames.first()
+                && let Some(path) =
+                    frame.source.as_ref().and_then(|source| source.path.clone())
+            {
+                self.common
+                    .internal_command
+                    .send(InternalCommand::JumpToLocation {
+                        location: EditorLocation {
+                            path,
+                            position: Some(EditorPosition::Line(
+                                frame.line.saturating_sub(1),
+                            )),
+                            scroll_offset: None,
+                            ignore_unconfirmed: false,
+                            same_editor_tab: false,
+                        },
+                    });
             }
             if let Some(current) = current_stack_traces.get_mut(thread_id) {
                 current.frames.set(frames.into());

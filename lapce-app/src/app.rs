@@ -273,10 +273,10 @@ impl AppData {
                     return;
                 }
                 let db: Arc<LapceDb> = use_context().unwrap();
-                if self.windows.with_untracked(|w| w.len()) == 1 {
-                    if let Err(err) = db.insert_app(self.clone()) {
-                        tracing::error!("{:?}", err);
-                    }
+                if self.windows.with_untracked(|w| w.len()) == 1
+                    && let Err(err) = db.insert_app(self.clone())
+                {
+                    tracing::error!("{:?}", err);
                 }
                 let window_data = self
                     .windows
@@ -1004,13 +1004,13 @@ fn editor_tab_header(
         })
         .debug_name("Tab and Active Indicator")
         .on_event_stop(EventListener::DragOver, move |event| {
-            if dragging.with_untracked(|dragging| dragging.is_some()) {
-                if let Event::PointerMove(pointer_event) = event {
-                    let new_left = pointer_event.pos.x
-                        < header_content_size.get_untracked().width / 2.0;
-                    if drag_over_left.get_untracked() != Some(new_left) {
-                        drag_over_left.set(Some(new_left));
-                    }
+            if dragging.with_untracked(|dragging| dragging.is_some())
+                && let Event::PointerMove(pointer_event) = event
+            {
+                let new_left = pointer_event.pos.x
+                    < header_content_size.get_untracked().width / 2.0;
+                if drag_over_left.get_untracked() != Some(new_left) {
+                    drag_over_left.set(Some(new_left));
                 }
             }
         })
@@ -1515,24 +1515,24 @@ fn editor_tab(
                 .debug_name("Drag Over Handle"),
             empty()
                 .on_event_stop(EventListener::DragOver, move |event| {
-                    if dragging.with_untracked(|dragging| dragging.is_some()) {
-                        if let Event::PointerMove(pointer_event) = event {
-                            let size = tab_size.get_untracked();
-                            let pos = pointer_event.pos;
-                            let new_drag_over = if pos.x < size.width / 4.0 {
-                                DragOverPosition::Left
-                            } else if pos.x > size.width * 3.0 / 4.0 {
-                                DragOverPosition::Right
-                            } else if pos.y < size.height / 4.0 {
-                                DragOverPosition::Top
-                            } else if pos.y > size.height * 3.0 / 4.0 {
-                                DragOverPosition::Bottom
-                            } else {
-                                DragOverPosition::Middle
-                            };
-                            if drag_over.get_untracked() != Some(new_drag_over) {
-                                drag_over.set(Some(new_drag_over));
-                            }
+                    if dragging.with_untracked(|dragging| dragging.is_some())
+                        && let Event::PointerMove(pointer_event) = event
+                    {
+                        let size = tab_size.get_untracked();
+                        let pos = pointer_event.pos;
+                        let new_drag_over = if pos.x < size.width / 4.0 {
+                            DragOverPosition::Left
+                        } else if pos.x > size.width * 3.0 / 4.0 {
+                            DragOverPosition::Right
+                        } else if pos.y < size.height / 4.0 {
+                            DragOverPosition::Top
+                        } else if pos.y > size.height * 3.0 / 4.0 {
+                            DragOverPosition::Bottom
+                        } else {
+                            DragOverPosition::Middle
+                        };
+                        if drag_over.get_untracked() != Some(new_drag_over) {
+                            drag_over.set(Some(new_drag_over));
                         }
                     }
                 })
@@ -1709,63 +1709,61 @@ fn split_resize_border(
                 drag_start.set(None);
             })
             .on_event_stop(EventListener::PointerMove, move |event| {
-                if let Event::PointerMove(pointer_event) = event {
-                    if let Some(drag_start_point) = drag_start.get_untracked() {
-                        let rects = split.with_untracked(|split| {
-                            split
-                                .children
-                                .iter()
-                                .map(|(_, c)| content_rect(c, false))
-                                .collect::<Vec<Rect>>()
-                        });
-                        let direction = direction(false);
-                        match direction {
-                            SplitDirection::Vertical => {
-                                let left = rects[index - 1].width();
-                                let right = rects[index].width();
-                                let shift = pointer_event.pos.x - drag_start_point.x;
-                                let left = left + shift;
-                                let right = right - shift;
-                                let total_width =
-                                    rects.iter().map(|r| r.width()).sum::<f64>();
-                                split.with_untracked(|split| {
-                                    for (i, (size, _)) in
-                                        split.children.iter().enumerate()
-                                    {
-                                        if i == index - 1 {
-                                            size.set(left / total_width);
-                                        } else if i == index {
-                                            size.set(right / total_width);
-                                        } else {
-                                            size.set(rects[i].width() / total_width);
-                                        }
+                if let Event::PointerMove(pointer_event) = event
+                    && let Some(drag_start_point) = drag_start.get_untracked()
+                {
+                    let rects = split.with_untracked(|split| {
+                        split
+                            .children
+                            .iter()
+                            .map(|(_, c)| content_rect(c, false))
+                            .collect::<Vec<Rect>>()
+                    });
+                    let direction = direction(false);
+                    match direction {
+                        SplitDirection::Vertical => {
+                            let left = rects[index - 1].width();
+                            let right = rects[index].width();
+                            let shift = pointer_event.pos.x - drag_start_point.x;
+                            let left = left + shift;
+                            let right = right - shift;
+                            let total_width =
+                                rects.iter().map(|r| r.width()).sum::<f64>();
+                            split.with_untracked(|split| {
+                                for (i, (size, _)) in
+                                    split.children.iter().enumerate()
+                                {
+                                    if i == index - 1 {
+                                        size.set(left / total_width);
+                                    } else if i == index {
+                                        size.set(right / total_width);
+                                    } else {
+                                        size.set(rects[i].width() / total_width);
                                     }
-                                })
-                            }
-                            SplitDirection::Horizontal => {
-                                let up = rects[index - 1].height();
-                                let down = rects[index].height();
-                                let shift = pointer_event.pos.y - drag_start_point.y;
-                                let up = up + shift;
-                                let down = down - shift;
-                                let total_height =
-                                    rects.iter().map(|r| r.height()).sum::<f64>();
-                                split.with_untracked(|split| {
-                                    for (i, (size, _)) in
-                                        split.children.iter().enumerate()
-                                    {
-                                        if i == index - 1 {
-                                            size.set(up / total_height);
-                                        } else if i == index {
-                                            size.set(down / total_height);
-                                        } else {
-                                            size.set(
-                                                rects[i].height() / total_height,
-                                            );
-                                        }
+                                }
+                            })
+                        }
+                        SplitDirection::Horizontal => {
+                            let up = rects[index - 1].height();
+                            let down = rects[index].height();
+                            let shift = pointer_event.pos.y - drag_start_point.y;
+                            let up = up + shift;
+                            let down = down - shift;
+                            let total_height =
+                                rects.iter().map(|r| r.height()).sum::<f64>();
+                            split.with_untracked(|split| {
+                                for (i, (size, _)) in
+                                    split.children.iter().enumerate()
+                                {
+                                    if i == index - 1 {
+                                        size.set(up / total_height);
+                                    } else if i == index {
+                                        size.set(down / total_height);
+                                    } else {
+                                        size.set(rects[i].height() / total_height);
                                     }
-                                })
-                            }
+                                }
+                            })
                         }
                     }
                 }
@@ -3446,13 +3444,13 @@ fn workspace_tab_header(window_data: WindowData) -> impl View {
                         },
                     ))
                     .on_event_stop(EventListener::DragOver, move |event| {
-                        if dragging_index.get_untracked().is_some() {
-                            if let Event::PointerMove(pointer_event) = event {
-                                let left = pointer_event.pos.x
-                                    < tab_width.get_untracked() / 2.0;
-                                if drag_over_left.get_untracked() != Some(left) {
-                                    drag_over_left.set(Some(left));
-                                }
+                        if dragging_index.get_untracked().is_some()
+                            && let Event::PointerMove(pointer_event) = event
+                        {
+                            let left = pointer_event.pos.x
+                                < tab_width.get_untracked() / 2.0;
+                            if drag_over_left.get_untracked() != Some(left) {
+                                drag_over_left.set(Some(left));
                             }
                         }
                     })
@@ -3867,25 +3865,25 @@ pub fn launch() {
     let mut watcher = notify::recommended_watcher(ConfigWatcher::new(tx))
         .context("Failed to spawn file watcher")
         .unwrap();
-    if let Some(path) = LapceConfig::settings_file() {
-        if let Err(err) = watcher.watch(&path, notify::RecursiveMode::Recursive) {
-            tracing::error!("{:?}", err);
-        }
+    if let Some(path) = LapceConfig::settings_file()
+        && let Err(err) = watcher.watch(&path, notify::RecursiveMode::Recursive)
+    {
+        tracing::error!("{:?}", err);
     }
-    if let Some(path) = Directory::themes_directory() {
-        if let Err(err) = watcher.watch(&path, notify::RecursiveMode::Recursive) {
-            tracing::error!("{:?}", err);
-        }
+    if let Some(path) = Directory::themes_directory()
+        && let Err(err) = watcher.watch(&path, notify::RecursiveMode::Recursive)
+    {
+        tracing::error!("{:?}", err);
     }
-    if let Some(path) = LapceConfig::keymaps_file() {
-        if let Err(err) = watcher.watch(&path, notify::RecursiveMode::Recursive) {
-            tracing::error!("{:?}", err);
-        }
+    if let Some(path) = LapceConfig::keymaps_file()
+        && let Err(err) = watcher.watch(&path, notify::RecursiveMode::Recursive)
+    {
+        tracing::error!("{:?}", err);
     }
-    if let Some(path) = Directory::plugins_directory() {
-        if let Err(err) = watcher.watch(&path, notify::RecursiveMode::Recursive) {
-            tracing::error!("{:?}", err);
-        }
+    if let Some(path) = Directory::plugins_directory()
+        && let Err(err) = watcher.watch(&path, notify::RecursiveMode::Recursive)
+    {
+        tracing::error!("{:?}", err);
     }
 
     let windows = scope.create_rw_signal(im::HashMap::new());
@@ -4015,12 +4013,12 @@ pub fn launch() {
         let notification = create_signal_from_channel(rx);
         let app_data = app_data.clone();
         create_effect(move |_| {
-            if let Some(CoreNotification::OpenPaths { paths }) = notification.get() {
-                if let Some(window_tab) = app_data.active_window_tab() {
-                    window_tab.open_paths(&paths);
-                    // focus window after open doc
-                    floem::action::focus_window();
-                }
+            if let Some(CoreNotification::OpenPaths { paths }) = notification.get()
+                && let Some(window_tab) = app_data.active_window_tab()
+            {
+                window_tab.open_paths(&paths);
+                // focus window after open doc
+                floem::action::focus_window();
             }
         });
         std::thread::Builder::new()
@@ -4111,10 +4109,12 @@ pub fn load_shell_env() {
         .filter_map(|line| line.split_once('='))
         .for_each(|(key, value)| unsafe {
             let value = value.trim_matches('\r');
-            if let Ok(v) = std::env::var(key) {
-                if v != value {
-                    warn!("Overwriting '{key}', previous value: '{v}', new value '{value}'");
-                }
+            if let Ok(v) = std::env::var(key)
+                && v != value
+            {
+                warn!(
+                    "Overwriting '{key}', previous value: '{v}', new value '{value}'"
+                );
             };
             std::env::set_var(key, value);
         })
@@ -4159,10 +4159,10 @@ pub fn try_open_in_existing_process(
 fn listen_local_socket(tx: SyncSender<CoreNotification>) -> Result<()> {
     let local_socket = Directory::local_socket()
         .ok_or_else(|| anyhow!("can't get local socket folder"))?;
-    if local_socket.exists() {
-        if let Err(err) = std::fs::remove_file(&local_socket) {
-            tracing::error!("{:?}", err);
-        }
+    if local_socket.exists()
+        && let Err(err) = std::fs::remove_file(&local_socket)
+    {
+        tracing::error!("{:?}", err);
     }
     let socket =
         interprocess::local_socket::LocalSocketListener::bind(local_socket)?;

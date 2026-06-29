@@ -1165,16 +1165,16 @@ impl PluginHostHandler {
             "experimental/serverStatus" => {
                 let param: ServerStatusParams =
                     serde_json::from_value(serde_json::to_value(params)?)?;
-                if !param.is_ok() {
-                    if let Some(msg) = &param.message {
-                        self.core_rpc.show_message(
-                            from,
-                            ShowMessageParams {
-                                typ: MessageType::ERROR,
-                                message: msg.clone(),
-                            },
-                        );
-                    }
+                if !param.is_ok()
+                    && let Some(msg) = &param.message
+                {
+                    self.core_rpc.show_message(
+                        from,
+                        ShowMessageParams {
+                            typ: MessageType::ERROR,
+                            message: msg.clone(),
+                        },
+                    );
                 }
                 self.catalog_rpc.core_rpc.server_status(param);
             }

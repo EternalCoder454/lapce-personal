@@ -322,12 +322,12 @@ fn file_diffs_view(source_control: SourceControlData) -> impl View {
                 });
             };
 
-            if let Event::PointerDown(pointer_event) = event {
-                if pointer_event.button.is_secondary() {
-                    let menu = Menu::new("")
-                        .entry(MenuItem::new("Discard Changes").action(discard));
-                    show_context_menu(menu, None);
-                }
+            if let Event::PointerDown(pointer_event) = event
+                && pointer_event.button.is_secondary()
+            {
+                let menu = Menu::new("")
+                    .entry(MenuItem::new("Discard Changes").action(discard));
+                show_context_menu(menu, None);
             }
         })
         .style(move |s| {

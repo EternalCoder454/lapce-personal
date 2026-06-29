@@ -78,12 +78,12 @@ fn terminal_tab_header(window_tab_data: Rc<WindowTabData>) -> impl View {
                     move || {
                         let terminal = tab.active_terminal(true);
                         let run_debug = terminal.as_ref().map(|t| t.run_debug);
-                        if let Some(run_debug) = run_debug {
-                            if let Some(name) = run_debug.with(|run_debug| {
+                        if let Some(run_debug) = run_debug
+                            && let Some(name) = run_debug.with(|run_debug| {
                                 run_debug.as_ref().map(|r| r.config.name.clone())
-                            }) {
-                                return name;
-                            }
+                            })
+                        {
+                            return name;
                         }
 
                         let title = terminal.map(|t| t.title);
@@ -95,20 +95,20 @@ fn terminal_tab_header(window_tab_data: Rc<WindowTabData>) -> impl View {
                 let svg_string = move || {
                     let terminal = tab.active_terminal(true);
                     let run_debug = terminal.as_ref().map(|t| t.run_debug);
-                    if let Some(run_debug) = run_debug {
-                        if let Some((mode, stopped)) = run_debug.with(|run_debug| {
+                    if let Some(run_debug) = run_debug
+                        && let Some((mode, stopped)) = run_debug.with(|run_debug| {
                             run_debug.as_ref().map(|r| (r.mode, r.stopped))
-                        }) {
-                            let svg = match (mode, stopped) {
-                                (RunDebugMode::Run, false) => LapceIcons::START,
-                                (RunDebugMode::Run, true) => LapceIcons::RUN_ERRORS,
-                                (RunDebugMode::Debug, false) => LapceIcons::DEBUG,
-                                (RunDebugMode::Debug, true) => {
-                                    LapceIcons::DEBUG_DISCONNECT
-                                }
-                            };
-                            return svg;
-                        }
+                        })
+                    {
+                        let svg = match (mode, stopped) {
+                            (RunDebugMode::Run, false) => LapceIcons::START,
+                            (RunDebugMode::Run, true) => LapceIcons::RUN_ERRORS,
+                            (RunDebugMode::Debug, false) => LapceIcons::DEBUG,
+                            (RunDebugMode::Debug, true) => {
+                                LapceIcons::DEBUG_DISCONNECT
+                            }
+                        };
+                        return svg;
                     }
                     LapceIcons::TERMINAL
                 };

@@ -793,10 +793,10 @@ impl ProxyHandler for Dispatcher {
 
                         let mut items = Vec::new();
                         for path in walker.flatten() {
-                            if let Some(file_type) = path.file_type() {
-                                if file_type.is_file() {
-                                    items.push(path.into_path());
-                                }
+                            if let Some(file_type) = path.file_type()
+                                && file_type.is_file()
+                            {
+                                items.push(path.into_path());
                             }
                         }
                         Ok(ProxyResponse::GetFilesResponse { items })
@@ -938,15 +938,15 @@ impl ProxyHandler for Dispatcher {
                         message: format!("{new_path:?} already exists"),
                     })
                 } else {
-                    if let Some(parent) = new_path.parent() {
-                        if let Err(error) = std::fs::create_dir_all(parent) {
-                            let result = Err(RpcError {
-                                code: 0,
-                                message: error.to_string(),
-                            });
-                            self.respond_rpc(id, result);
-                            return;
-                        }
+                    if let Some(parent) = new_path.parent()
+                        && let Err(error) = std::fs::create_dir_all(parent)
+                    {
+                        let result = Err(RpcError {
+                            code: 0,
+                            message: error.to_string(),
+                        });
+                        self.respond_rpc(id, result);
+                        return;
                     }
                     std::fs::copy(existing_path, new_path)
                         .map(|_| ProxyResponse::Success {})

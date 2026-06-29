@@ -746,10 +746,11 @@ impl TerminalData {
 
     pub fn stop(&self) {
         if let Some(dap_id) = self.run_debug.with_untracked(|x| {
-            if let Some(process) = x {
-                if !process.is_prelaunch && process.mode == RunDebugMode::Debug {
-                    return Some(process.config.dap_id);
-                }
+            if let Some(process) = x
+                && !process.is_prelaunch
+                && process.mode == RunDebugMode::Debug
+            {
+                return Some(process.config.dap_id);
             }
             None
         }) {
@@ -812,22 +813,20 @@ impl ExpandedRunDebug {
             program
         };
 
-        if program.contains("${workspace}") {
-            if let Some(workspace) = workspace.path.as_ref().and_then(|x| x.to_str())
-            {
-                program = program.replace("${workspace}", workspace);
-            }
+        if program.contains("${workspace}")
+            && let Some(workspace) = workspace.path.as_ref().and_then(|x| x.to_str())
+        {
+            program = program.replace("${workspace}", workspace);
         }
 
         if let Some(args) = &mut args {
             for arg in args {
                 // Replace all mentions of ${workspace} with the current workspace path
-                if arg.contains("${workspace}") {
-                    if let Some(workspace) =
+                if arg.contains("${workspace}")
+                    && let Some(workspace) =
                         workspace.path.as_ref().and_then(|x| x.to_str())
-                    {
-                        *arg = arg.replace("${workspace}", workspace);
-                    }
+                {
+                    *arg = arg.replace("${workspace}", workspace);
                 }
             }
         }
@@ -846,13 +845,12 @@ impl ExpandedRunDebug {
     ) -> Option<Url> {
         let path = run_debug.cwd.as_ref()?;
 
-        if path.contains("${workspace}") {
-            if let Some(workspace) = workspace.path.as_ref().and_then(|x| x.to_str())
-            {
-                let path = path.replace("${workspace}", workspace);
-                if let Ok(as_url) = Url::from_file_path(PathBuf::from(path)) {
-                    return Some(as_url);
-                }
+        if path.contains("${workspace}")
+            && let Some(workspace) = workspace.path.as_ref().and_then(|x| x.to_str())
+        {
+            let path = path.replace("${workspace}", workspace);
+            if let Ok(as_url) = Url::from_file_path(PathBuf::from(path)) {
+                return Some(as_url);
             }
         }
 

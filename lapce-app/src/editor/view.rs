@@ -433,19 +433,19 @@ impl EditorView {
         );
 
         // TODO: check if this is correct
-        if let Some(breakline) = breakline {
-            if let Some(info) = screen_lines.info_for_line(breakline) {
-                let rect = Rect::from_origin_size(
-                    (viewport.x0, info.vline_y),
-                    (viewport.width(), line_height),
-                );
+        if let Some(breakline) = breakline
+            && let Some(info) = screen_lines.info_for_line(breakline)
+        {
+            let rect = Rect::from_origin_size(
+                (viewport.x0, info.vline_y),
+                (viewport.width(), line_height),
+            );
 
-                cx.fill(
-                    &rect,
-                    config.color(LapceColor::EDITOR_DEBUG_BREAK_LINE),
-                    0.0,
-                );
-            }
+            cx.fill(
+                &rect,
+                config.color(LapceColor::EDITOR_DEBUG_BREAK_LINE),
+                0.0,
+            );
         }
 
         cursor.with_untracked(|cursor| {
@@ -1000,16 +1000,16 @@ impl EditorView {
                 );
             }
 
-            if config.editor.highlight_scope_lines {
-                if let Some([start_line_col, end_line_col]) = bracket_line_cols {
-                    self.paint_scope_lines(
-                        cx,
-                        viewport,
-                        screen_lines,
-                        start_line_col,
-                        end_line_col,
-                    );
-                }
+            if config.editor.highlight_scope_lines
+                && let Some([start_line_col, end_line_col]) = bracket_line_cols
+            {
+                self.paint_scope_lines(
+                    cx,
+                    viewport,
+                    screen_lines,
+                    start_line_col,
+                    end_line_col,
+                );
             }
         }
     }
@@ -1363,12 +1363,11 @@ pub fn editor_container_view(
             } else {
                 None
             };
-        if let Some(name) = scratch_doc_name {
-            if !scratch_docs
+        if let Some(name) = scratch_doc_name
+            && !scratch_docs
                 .with_untracked(|scratch_docs| scratch_docs.contains_key(&name))
-            {
-                doc.scope.dispose();
-            }
+        {
+            doc.scope.dispose();
         }
     })
     .style(|s| s.flex_col().absolute().size_pct(100.0, 100.0))
@@ -1424,11 +1423,11 @@ fn editor_gutter_breakpoint_view(
                         });
                     } else {
                         let mut toggle_active = false;
-                        if let Some(breakpoint) = breakpoints.get_mut(&line) {
-                            if !breakpoint.active {
-                                breakpoint.active = true;
-                                toggle_active = true;
-                            }
+                        if let Some(breakpoint) = breakpoints.get_mut(&line)
+                            && !breakpoint.active
+                        {
+                            breakpoint.active = true;
+                            toggle_active = true;
                         }
                         if !toggle_active {
                             breakpoints.remove(&line);

@@ -557,10 +557,9 @@ pub fn start_volt(
         let msg = local_stdout.host_take_string();
         if let Some(resp) =
             handle_plugin_server_message(&local_rpc, &msg, &volt_name)
+            && let Ok(msg) = serde_json::to_string(&resp)
         {
-            if let Ok(msg) = serde_json::to_string(&resp) {
-                local_stdin.host_write_line(&msg);
-            }
+            local_stdin.host_write_line(&msg);
         }
     })?;
     let plugin_meta = meta.clone();

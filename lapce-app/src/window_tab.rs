@@ -1213,32 +1213,28 @@ impl WindowTabData {
                 }
             }
             HidePanel => {
-                if let Some(data) = data {
-                    if let Ok(kind) = serde_json::from_value::<PanelKind>(data) {
+                if let Some(data) = data
+                    && let Ok(kind) = serde_json::from_value::<PanelKind>(data) {
                         self.hide_panel(kind);
                     }
-                }
             }
             ShowPanel => {
-                if let Some(data) = data {
-                    if let Ok(kind) = serde_json::from_value::<PanelKind>(data) {
+                if let Some(data) = data
+                    && let Ok(kind) = serde_json::from_value::<PanelKind>(data) {
                         self.show_panel(kind);
                     }
-                }
             }
             TogglePanelFocus => {
-                if let Some(data) = data {
-                    if let Ok(kind) = serde_json::from_value::<PanelKind>(data) {
+                if let Some(data) = data
+                    && let Ok(kind) = serde_json::from_value::<PanelKind>(data) {
                         self.toggle_panel_focus(kind);
                     }
-                }
             }
             TogglePanelVisual => {
-                if let Some(data) = data {
-                    if let Ok(kind) = serde_json::from_value::<PanelKind>(data) {
+                if let Some(data) = data
+                    && let Ok(kind) = serde_json::from_value::<PanelKind>(data) {
                         self.toggle_panel_visual(kind);
                     }
-                }
             }
             TogglePanelLeftVisual => {
                 self.toggle_container_visual(&PanelContainerPosition::Left);
@@ -1356,8 +1352,8 @@ impl WindowTabData {
                 {
                     let release = release.clone();
                     let update_in_progress = self.update_in_progress;
-                    if release.version != *meta::VERSION {
-                        if let Ok(process_path) = env::current_exe() {
+                    if release.version != *meta::VERSION
+                        && let Ok(process_path) = env::current_exe() {
                             update_in_progress.set(true);
                             let send = create_ext_action(
                                 self.common.scope,
@@ -1385,7 +1381,6 @@ impl WindowTabData {
                                 send(false);
                             }).unwrap();
                         }
-                    }
                 }
             }
 
@@ -1444,8 +1439,7 @@ impl WindowTabData {
             SourceControlOpenActiveFileRemoteUrl => {
                 if let Some(editor_data) =
                     self.main_split.active_editor.get_untracked()
-                {
-                    if let DocContent::File {path, ..} = editor_data.doc().content.get_untracked() {
+                    && let DocContent::File {path, ..} = editor_data.doc().content.get_untracked() {
                         let offset = editor_data.cursor().with_untracked(|c| c.offset());
                         let line = editor_data.doc()
                             .buffer
@@ -1456,22 +1450,18 @@ impl WindowTabData {
                                 if let Ok(ProxyResponse::GitGetRemoteFileUrl {
                                               file_url
                                           }) = result
-                                {
-                                    if let Err(err) = open::that(format!("{}#L{}", file_url, line)) {
+                                    && let Err(err) = open::that(format!("{}#L{}", file_url, line)) {
                                         error!("Failed to open file in github: {}",  err);
                                     }
-                                }
                             }),
                         );
 
                     }
-                }
             }
             RevealInFileExplorer => {
                 if let Some(editor_data) =
                     self.main_split.active_editor.get_untracked()
-                {
-                    if let DocContent::File {path, ..} = editor_data.doc().content.get_untracked() {
+                    && let DocContent::File {path, ..} = editor_data.doc().content.get_untracked() {
                         let path = path.parent().unwrap_or(&path);
                         if !path.exists() {
                             return;
@@ -1483,7 +1473,6 @@ impl WindowTabData {
                         );
                         }
                     }
-                }
             }
             ShowCallHierarchy => {
                 if let Some(editor_data) =
@@ -1705,12 +1694,11 @@ impl WindowTabData {
 
                             for content in renamed_editors_content {
                                 content.update(|content| {
-                                    if let DocContent::File { path, .. } = content {
-                                        if let Ok(suffix) =
+                                    if let DocContent::File { path, .. } = content
+                                        && let Ok(suffix) =
                                             path.strip_prefix(&send_current_path)
-                                        {
-                                            *path = new_path.join(suffix);
-                                        }
+                                    {
+                                        *path = new_path.join(suffix);
                                     }
                                 });
                             }
@@ -1746,12 +1734,10 @@ impl WindowTabData {
                                 // Open a new file in the editor
                                 if let ProxyResponse::CreatePathResponse { path } =
                                     response
+                                    && !is_dir
                                 {
-                                    if !is_dir {
-                                        internal_command.send(
-                                            InternalCommand::OpenFile { path },
-                                        );
-                                    }
+                                    internal_command
+                                        .send(InternalCommand::OpenFile { path });
                                 }
                             }
                             Err(err) => {
@@ -2231,12 +2217,12 @@ impl WindowTabData {
                                 current_breakpoint
                                     .message
                                     .clone_from(&breakpoint.message);
-                                if let Some(new_line) = breakpoint.line {
-                                    if current_breakpoint.line + 1 != new_line {
-                                        line_changed.insert(current_breakpoint.line);
-                                        current_breakpoint.line =
-                                            new_line.saturating_sub(1);
-                                    }
+                                if let Some(new_line) = breakpoint.line
+                                    && current_breakpoint.line + 1 != new_line
+                                {
+                                    line_changed.insert(current_breakpoint.line);
+                                    current_breakpoint.line =
+                                        new_line.saturating_sub(1);
                                 }
                             }
                             i += 1;
@@ -2716,10 +2702,10 @@ impl WindowTabData {
         {
             let active_editor = self.main_split.active_editor.get_untracked();
             let word = active_editor.map(|editor| editor.word_at_cursor());
-            if let Some(word) = word {
-                if !word.is_empty() {
-                    self.global_search.set_pattern(word);
-                }
+            if let Some(word) = word
+                && !word.is_empty()
+            {
+                self.global_search.set_pattern(word);
             }
         }
         self.common.focus.set(Focus::Panel(kind));

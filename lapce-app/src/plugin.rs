@@ -436,10 +436,10 @@ impl PluginData {
                 }
                 let buf = resp.bytes()?.to_vec();
 
-                if let Some(path) = cache_file_path.as_ref() {
-                    if let Err(err) = std::fs::write(path, &buf) {
-                        tracing::error!("{:?}", err);
-                    }
+                if let Some(path) = cache_file_path.as_ref()
+                    && let Err(err) = std::fs::write(path, &buf)
+                {
+                    tracing::error!("{:?}", err);
                 }
 
                 buf

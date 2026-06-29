@@ -150,16 +150,16 @@ impl TerminalPanelData {
             let handle = keypress.key_down(event, &terminal);
             let mode = terminal.get_mode();
 
-            if !handle.handled && mode == Mode::Terminal {
-                if let EventRef::Keyboard(key_event) = event.into() {
-                    if terminal.send_keypress(key_event) {
-                        return Some(KeyPressHandle {
-                            handled: true,
-                            keymatch: handle.keymatch,
-                            keypress: handle.keypress,
-                        });
-                    }
-                }
+            if !handle.handled
+                && mode == Mode::Terminal
+                && let EventRef::Keyboard(key_event) = event.into()
+                && terminal.send_keypress(key_event)
+            {
+                return Some(KeyPressHandle {
+                    handled: true,
+                    keymatch: handle.keymatch,
+                    keypress: handle.keypress,
+                });
             }
             Some(handle)
         } else {
@@ -437,18 +437,18 @@ impl TerminalPanelData {
                     for (_, terminal) in terminals {
                         if let Some(run_debug) =
                             terminal.run_debug.get_untracked().as_ref()
+                            && run_debug.stopped
+                            && &run_debug.mode == mode
                         {
-                            if run_debug.stopped && &run_debug.mode == mode {
-                                match run_debug.mode {
-                                    RunDebugMode::Run => {
-                                        if run_debug.config.name == config.name {
-                                            return Some(terminal.clone());
-                                        }
+                            match run_debug.mode {
+                                RunDebugMode::Run => {
+                                    if run_debug.config.name == config.name {
+                                        return Some(terminal.clone());
                                     }
-                                    RunDebugMode::Debug => {
-                                        if run_debug.config.dap_id == config.dap_id {
-                                            return Some(terminal.clone());
-                                        }
+                                }
+                                RunDebugMode::Debug => {
+                                    if run_debug.config.dap_id == config.dap_id {
+                                        return Some(terminal.clone());
                                     }
                                 }
                             }
@@ -469,12 +469,11 @@ impl TerminalPanelData {
         let (_, terminal_tab, index, terminal) =
             self.get_terminal_in_tab(&term_id)?;
         let mut run_debug = terminal.run_debug.get_untracked()?;
-        if run_debug.config.config_source.from_palette() {
-            if let Some(new_config) =
+        if run_debug.config.config_source.from_palette()
+            && let Some(new_config) =
                 self.get_run_config_by_name(&run_debug.config.name)
-            {
-                run_debug.config = new_config;
-            }
+        {
+            run_debug.config = new_config;
         }
         let mut is_debug = false;
         let new_term_id = match run_debug.mode {
@@ -562,10 +561,10 @@ impl TerminalPanelData {
                 if current_active != Some(term_id) {
                     self.debug.active_term.set(Some(term_id));
                 }
-            } else if let Some(active) = current_active {
-                if self.get_terminal(&active).is_none() {
-                    self.debug.active_term.set(None);
-                }
+            } else if let Some(active) = current_active
+                && self.get_terminal(&active).is_none()
+            {
+                self.debug.active_term.set(None);
             }
         } else {
             self.debug.active_term.set(None);
@@ -629,13 +628,13 @@ impl TerminalPanelData {
     pub fn set_process_id(&self, term_id: &TermId, process_id: Option<u32>) {
         if let Some(terminal) = self.get_terminal(term_id) {
             terminal.run_debug.with_untracked(|run_debug| {
-                if let Some(run_debug) = run_debug.as_ref() {
-                    if run_debug.config.debug_command.is_some() {
-                        let dap_id = run_debug.config.dap_id;
-                        self.common
-                            .proxy
-                            .dap_process_id(dap_id, process_id, *term_id);
-                    }
+                if let Some(run_debug) = run_debug.as_ref()
+                    && run_debug.config.debug_command.is_some()
+                {
+                    let dap_id = run_debug.config.dap_id;
+                    self.common
+                        .proxy
+                        .dap_process_id(dap_id, process_id, *term_id);
                 }
             });
         }

@@ -239,13 +239,12 @@ impl PanelData {
     }
 
     pub fn is_panel_visible(&self, kind: &PanelKind) -> bool {
-        if let Some((index, position)) = self.panel_position(kind) {
-            if let Some(style) = self
+        if let Some((index, position)) = self.panel_position(kind)
+            && let Some(style) = self
                 .styles
                 .with_untracked(|styles| styles.get(&position).cloned())
-            {
-                return style.active == index && style.shown;
-            }
+        {
+            return style.active == index && style.shown;
         }
         false
     }
@@ -262,22 +261,19 @@ impl PanelData {
     }
 
     pub fn hide_panel(&self, kind: &PanelKind) {
-        if let Some((_, position)) = self.panel_position(kind) {
-            if let Some((active_panel, _)) =
+        if let Some((_, position)) = self.panel_position(kind)
+            && let Some((active_panel, _)) =
                 self.active_panel_at_position(&position, false)
+            && &active_panel == kind
+        {
+            self.set_shown(&position, false);
+            let peer_position = position.peer();
+            if let Some(order) = self
+                .panels
+                .with_untracked(|panels| panels.get(&peer_position).cloned())
+                && order.is_empty()
             {
-                if &active_panel == kind {
-                    self.set_shown(&position, false);
-                    let peer_position = position.peer();
-                    if let Some(order) = self
-                        .panels
-                        .with_untracked(|panels| panels.get(&peer_position).cloned())
-                    {
-                        if order.is_empty() {
-                            self.set_shown(&peer_position, false);
-                        }
-                    }
-                }
+                self.set_shown(&peer_position, false);
             }
         }
     }
@@ -318,20 +314,19 @@ impl PanelData {
 
     pub fn toggle_active_maximize(&self) {
         let focus = self.common.focus.get_untracked();
-        if let Focus::Panel(kind) = focus {
-            if let Some((_, pos)) = self.panel_position(&kind) {
-                if pos.is_bottom() {
-                    self.toggle_bottom_maximize();
-                }
-            }
+        if let Focus::Panel(kind) = focus
+            && let Some((_, pos)) = self.panel_position(&kind)
+            && pos.is_bottom()
+        {
+            self.toggle_bottom_maximize();
         }
     }
 
     pub fn toggle_maximize(&self, kind: &PanelKind) {
-        if let Some((_, p)) = self.panel_position(kind) {
-            if p.is_bottom() {
-                self.toggle_bottom_maximize();
-            }
+        if let Some((_, p)) = self.panel_position(kind)
+            && p.is_bottom()
+        {
+            self.toggle_bottom_maximize();
         }
     }
 
@@ -402,14 +397,14 @@ impl PanelData {
         let index = self
             .panels
             .try_update(|panels| {
-                if let Some((index, current_position)) = current_position {
-                    if let Some(panels) = panels.get_mut(&current_position) {
-                        panels.remove(index);
+                if let Some((index, current_position)) = current_position
+                    && let Some(panels) = panels.get_mut(&current_position)
+                {
+                    panels.remove(index);
 
-                        let max_index = panels.len().saturating_sub(1);
-                        if index > max_index {
-                            new_index_at_old_position = Some(max_index);
-                        }
+                    let max_index = panels.len().saturating_sub(1);
+                    if index > max_index {
+                        new_index_at_old_position = Some(max_index);
                     }
                 }
                 let panels = panels.entry(*position).or_default();
@@ -418,11 +413,11 @@ impl PanelData {
             })
             .unwrap();
         self.styles.update(|styles| {
-            if let Some((_, current_position)) = current_position {
-                if let Some(new_index) = new_index_at_old_position {
-                    let style = styles.entry(current_position).or_default();
-                    style.active = new_index;
-                }
+            if let Some((_, current_position)) = current_position
+                && let Some(new_index) = new_index_at_old_position
+            {
+                let style = styles.entry(current_position).or_default();
+                style.active = new_index;
             }
 
             let style = styles.entry(*position).or_default();

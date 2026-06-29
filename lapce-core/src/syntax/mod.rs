@@ -192,20 +192,20 @@ impl BracketParser {
         {
             self.bracket_pos = HashMap::new();
             if let Some(syntax) = syntax {
-                if let Some(layers) = &syntax.layers {
-                    if let Some(tree) = layers.try_tree() {
-                        let mut walk_cursor = tree.walk();
-                        let mut bracket_pos: HashMap<usize, Vec<LineStyle>> =
-                            HashMap::new();
-                        language::walk_tree_bracket_ast(
-                            &mut walk_cursor,
-                            &mut 0,
-                            &mut 0,
-                            &mut bracket_pos,
-                            &palette,
-                        );
-                        self.bracket_pos = bracket_pos;
-                    }
+                if let Some(layers) = &syntax.layers
+                    && let Some(tree) = layers.try_tree()
+                {
+                    let mut walk_cursor = tree.walk();
+                    let mut bracket_pos: HashMap<usize, Vec<LineStyle>> =
+                        HashMap::new();
+                    language::walk_tree_bracket_ast(
+                        &mut walk_cursor,
+                        &mut 0,
+                        &mut 0,
+                        &mut bracket_pos,
+                        &palette,
+                    );
+                    self.bracket_pos = bracket_pos;
                 }
             } else {
                 self.code = code.chars().collect();
@@ -490,10 +490,10 @@ impl SyntaxLayers {
         let mut syntax = SyntaxLayers { root, layers };
 
         let cancel_flag = AtomicUsize::new(0);
-        if let Some(source) = source {
-            if let Err(err) = syntax.update(0, 0, source, None, &cancel_flag) {
-                tracing::error!("{:?}", err);
-            }
+        if let Some(source) = source
+            && let Err(err) = syntax.update(0, 0, source, None, &cancel_flag)
+        {
+            tracing::error!("{:?}", err);
         }
 
         syntax
@@ -652,11 +652,9 @@ impl SyntaxLayers {
 
                 let had_edits = layer.rev == current_rev && syntax_edits.is_some();
                 // If a tree already exists, notify it of changes.
-                if had_edits {
-                    if let Some(tree) = &mut layer.tree {
-                        for edit in edits.iter() {
-                            tree.edit(edit);
-                        }
+                if had_edits && let Some(tree) = &mut layer.tree {
+                    for edit in edits.iter() {
+                        tree.edit(edit);
                     }
                 }
 
@@ -706,11 +704,11 @@ impl SyntaxLayers {
                             if injection_capture.is_some() {
                                 entry.0 = injection_capture;
                             }
-                            if let Some(content_node) = content_node {
-                                if content_node.start_byte() >= last_injection_end {
-                                    entry.1.push(content_node);
-                                    last_injection_end = content_node.end_byte();
-                                }
+                            if let Some(content_node) = content_node
+                                && content_node.start_byte() >= last_injection_end
+                            {
+                                entry.1.push(content_node);
+                                last_injection_end = content_node.end_byte();
                             }
                             entry.2 = included_children;
                             continue;
@@ -983,15 +981,15 @@ impl Syntax {
             {
                 match highlight {
                     HighlightEvent::Source { start, end } => {
-                        if let Some(hl) = current_hl {
-                            if let Some(hl) = SCOPES.get(hl.0) {
-                                highlights.add_span(
-                                    Interval::new(start, end),
-                                    Style {
-                                        fg_color: Some(hl.to_string()),
-                                    },
-                                );
-                            }
+                        if let Some(hl) = current_hl
+                            && let Some(hl) = SCOPES.get(hl.0)
+                        {
+                            highlights.add_span(
+                                Interval::new(start, end),
+                                Style {
+                                    fg_color: Some(hl.to_string()),
+                                },
+                            );
                         }
                     }
                     HighlightEvent::HighlightStart(hl) => {
@@ -1140,11 +1138,11 @@ impl Syntax {
 
     fn find_tag_in_children(&self, node: Node, tag: &str) -> Option<usize> {
         for i in 0..node.child_count() {
-            if let Some(child) = node.child(i) {
-                if child.kind() == tag {
-                    let offset = child.start_byte();
-                    return Some(offset);
-                }
+            if let Some(child) = node.child(i)
+                && child.kind() == tag
+            {
+                let offset = child.start_byte();
+                return Some(offset);
             }
         }
         None

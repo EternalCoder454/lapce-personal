@@ -876,11 +876,11 @@ impl Doc {
 
         let doc = self.clone();
         let send = create_ext_action(self.scope, move |styles| {
-            if let Some(styles) = styles {
-                if doc.buffer.with_untracked(|b| b.rev()) == rev {
-                    doc.semantic_styles.set(Some(styles));
-                    doc.clear_style_cache();
-                }
+            if let Some(styles) = styles
+                && doc.buffer.with_untracked(|b| b.rev()) == rev
+            {
+                doc.semantic_styles.set(Some(styles));
+                doc.clear_style_cache();
             }
         });
 
@@ -1667,19 +1667,19 @@ impl DocumentPhantom for Doc {
                             affinity = Some(CursorAffinity::Forward)
                         }
                     };
-                    if affinity.is_none() {
-                        if let Some(next_char) = next_char {
-                            let c = get_char_property(next_char);
-                            if c == CharClassification::Other {
-                                affinity = Some(CursorAffinity::Forward)
-                            } else if matches!(
-                                c,
-                                CharClassification::Lf
-                                    | CharClassification::Cr
-                                    | CharClassification::Space
-                            ) {
-                                affinity = Some(CursorAffinity::Backward)
-                            }
+                    if affinity.is_none()
+                        && let Some(next_char) = next_char
+                    {
+                        let c = get_char_property(next_char);
+                        if c == CharClassification::Other {
+                            affinity = Some(CursorAffinity::Forward)
+                        } else if matches!(
+                            c,
+                            CharClassification::Lf
+                                | CharClassification::Cr
+                                | CharClassification::Space
+                        ) {
+                            affinity = Some(CursorAffinity::Backward)
                         }
                     }
 
@@ -1916,13 +1916,12 @@ impl DocStyling {
         if let Some(bracket_styles) = self.doc.parser.borrow().bracket_pos.get(&line)
         {
             for bracket_style in bracket_styles.iter() {
-                if let Some(fg_color) = bracket_style.style.fg_color.as_ref() {
-                    if let Some(fg_color) = config.style_color(fg_color) {
-                        let start = phantom_text.col_at(bracket_style.start);
-                        let end = phantom_text.col_at(bracket_style.end);
-                        attrs_list
-                            .add_span(start..end, attrs.clone().color(fg_color));
-                    }
+                if let Some(fg_color) = bracket_style.style.fg_color.as_ref()
+                    && let Some(fg_color) = config.style_color(fg_color)
+                {
+                    let start = phantom_text.col_at(bracket_style.start);
+                    let end = phantom_text.col_at(bracket_style.end);
+                    attrs_list.add_span(start..end, attrs.clone().color(fg_color));
                 }
             }
         }
@@ -2003,12 +2002,12 @@ impl Styling for DocStyling {
 
         let phantom_text = self.doc.phantom_text(edid, style, line);
         for line_style in self.doc.line_style(line).iter() {
-            if let Some(fg_color) = line_style.style.fg_color.as_ref() {
-                if let Some(fg_color) = config.style_color(fg_color) {
-                    let start = phantom_text.col_at(line_style.start);
-                    let end = phantom_text.col_at(line_style.end);
-                    attrs_list.add_span(start..end, default.clone().color(fg_color));
-                }
+            if let Some(fg_color) = line_style.style.fg_color.as_ref()
+                && let Some(fg_color) = config.style_color(fg_color)
+            {
+                let start = phantom_text.col_at(line_style.start);
+                let end = phantom_text.col_at(line_style.end);
+                attrs_list.add_span(start..end, default.clone().color(fg_color));
             }
         }
     }

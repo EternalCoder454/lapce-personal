@@ -242,10 +242,10 @@ impl PluginCatalogRpcHandler {
 
     #[allow(dead_code)]
     fn handle_response(&self, id: RequestId, result: Result<Value, RpcError>) {
-        if let Some(chan) = { self.pending.lock().remove(&id) } {
-            if let Err(err) = chan.send(result) {
-                tracing::error!("{:?}", err);
-            }
+        if let Some(chan) = { self.pending.lock().remove(&id) }
+            && let Err(err) = chan.send(result)
+        {
+            tracing::error!("{:?}", err);
         }
     }
 

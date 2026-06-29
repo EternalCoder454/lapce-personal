@@ -36,10 +36,10 @@ impl Directory {
         match Self::project_dirs() {
             Some(dir) => {
                 let dir = dir.data_local_dir();
-                if !dir.exists() {
-                    if let Err(err) = std::fs::create_dir_all(dir) {
-                        tracing::error!("{:?}", err);
-                    }
+                if !dir.exists()
+                    && let Err(err) = std::fs::create_dir_all(dir)
+                {
+                    tracing::error!("{:?}", err);
                 }
                 Some(dir.to_path_buf())
             }
@@ -52,10 +52,10 @@ impl Directory {
     pub fn logs_directory() -> Option<PathBuf> {
         if let Some(dir) = Self::data_local_directory() {
             let dir = dir.join("logs");
-            if !dir.exists() {
-                if let Err(err) = std::fs::create_dir(&dir) {
-                    tracing::error!("{:?}", err);
-                }
+            if !dir.exists()
+                && let Err(err) = std::fs::create_dir(&dir)
+            {
+                tracing::error!("{:?}", err);
             }
             Some(dir)
         } else {
@@ -67,10 +67,10 @@ impl Directory {
     pub fn cache_directory() -> Option<PathBuf> {
         if let Some(dir) = Self::data_local_directory() {
             let dir = dir.join("cache");
-            if !dir.exists() {
-                if let Err(err) = std::fs::create_dir(&dir) {
-                    tracing::error!("{:?}", err);
-                }
+            if !dir.exists()
+                && let Err(err) = std::fs::create_dir(&dir)
+            {
+                tracing::error!("{:?}", err);
             }
             Some(dir)
         } else {
@@ -84,10 +84,10 @@ impl Directory {
     pub fn proxy_directory() -> Option<PathBuf> {
         if let Some(dir) = Self::data_local_directory() {
             let dir = dir.join("proxy");
-            if !dir.exists() {
-                if let Err(err) = std::fs::create_dir(&dir) {
-                    tracing::error!("{:?}", err);
-                }
+            if !dir.exists()
+                && let Err(err) = std::fs::create_dir(&dir)
+            {
+                tracing::error!("{:?}", err);
             }
             Some(dir)
         } else {
@@ -99,10 +99,10 @@ impl Directory {
     pub fn themes_directory() -> Option<PathBuf> {
         if let Some(dir) = Self::data_local_directory() {
             let dir = dir.join("themes");
-            if !dir.exists() {
-                if let Err(err) = std::fs::create_dir(&dir) {
-                    tracing::error!("{:?}", err);
-                }
+            if !dir.exists()
+                && let Err(err) = std::fs::create_dir(&dir)
+            {
+                tracing::error!("{:?}", err);
             }
             Some(dir)
         } else {
@@ -115,10 +115,10 @@ impl Directory {
     pub fn plugins_directory() -> Option<PathBuf> {
         if let Some(dir) = Self::data_local_directory() {
             let dir = dir.join("plugins");
-            if !dir.exists() {
-                if let Err(err) = std::fs::create_dir(&dir) {
-                    tracing::error!("{:?}", err);
-                }
+            if !dir.exists()
+                && let Err(err) = std::fs::create_dir(&dir)
+            {
+                tracing::error!("{:?}", err);
             }
             Some(dir)
         } else {
@@ -131,10 +131,10 @@ impl Directory {
         match Self::project_dirs() {
             Some(dir) => {
                 let dir = dir.config_dir();
-                if !dir.exists() {
-                    if let Err(err) = std::fs::create_dir_all(dir) {
-                        tracing::error!("{:?}", err);
-                    }
+                if !dir.exists()
+                    && let Err(err) = std::fs::create_dir_all(dir)
+                {
+                    tracing::error!("{:?}", err);
                 }
                 Some(dir.to_path_buf())
             }
@@ -149,10 +149,10 @@ impl Directory {
     pub fn updates_directory() -> Option<PathBuf> {
         if let Some(dir) = Self::data_local_directory() {
             let dir = dir.join("updates");
-            if !dir.exists() {
-                if let Err(err) = std::fs::create_dir(&dir) {
-                    tracing::error!("{:?}", err);
-                }
+            if !dir.exists()
+                && let Err(err) = std::fs::create_dir(&dir)
+            {
+                tracing::error!("{:?}", err);
             }
             Some(dir)
         } else {
@@ -163,10 +163,10 @@ impl Directory {
     pub fn queries_directory() -> Option<PathBuf> {
         if let Some(dir) = Self::config_directory() {
             let dir = dir.join("queries");
-            if !dir.exists() {
-                if let Err(err) = std::fs::create_dir(&dir) {
-                    tracing::error!("{:?}", err);
-                }
+            if !dir.exists()
+                && let Err(err) = std::fs::create_dir(&dir)
+            {
+                tracing::error!("{:?}", err);
             }
 
             Some(dir)
@@ -178,10 +178,10 @@ impl Directory {
     pub fn grammars_directory() -> Option<PathBuf> {
         if let Some(dir) = Self::data_local_directory() {
             let dir = dir.join("grammars");
-            if !dir.exists() {
-                if let Err(err) = std::fs::create_dir(&dir) {
-                    tracing::error!("{:?}", err);
-                }
+            if !dir.exists()
+                && let Err(err) = std::fs::create_dir(&dir)
+            {
+                tracing::error!("{:?}", err);
             }
 
             Some(dir)

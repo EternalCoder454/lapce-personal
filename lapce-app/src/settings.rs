@@ -860,10 +860,10 @@ fn color_section_list(
                             _ => None,
                         };
 
-                        if let Some(value) = value {
-                            if value != &current {
-                                doc.reload(Rope::from(value.to_string()), true);
-                            }
+                        if let Some(value) = value
+                            && value != &current
+                        {
+                            doc.reload(Rope::from(value.to_string()), true);
                         }
                     });
                 }
@@ -887,49 +887,48 @@ fn color_section_list(
                         let buffer = doc.buffer;
                         let token =
                             exec_after(Duration::from_millis(500), move |token| {
-                                if let Some(timer) = timer.try_get_untracked() {
-                                    if timer == token {
-                                        let value =
-                                            buffer.with_untracked(|b| b.to_string());
+                                if let Some(timer) = timer.try_get_untracked()
+                                    && timer == token
+                                {
+                                    let value =
+                                        buffer.with_untracked(|b| b.to_string());
 
-                                        let config = config.get_untracked();
-                                        let default = match kind.as_str() {
-                                            "base" => config
-                                                .default_color_theme()
-                                                .base
-                                                .get(&field),
-                                            "ui" => config
-                                                .default_color_theme()
-                                                .ui
-                                                .get(&field),
-                                            "syntax" => config
-                                                .default_color_theme()
-                                                .syntax
-                                                .get(&field),
-                                            _ => None,
-                                        };
+                                    let config = config.get_untracked();
+                                    let default = match kind.as_str() {
+                                        "base" => config
+                                            .default_color_theme()
+                                            .base
+                                            .get(&field),
+                                        "ui" => config
+                                            .default_color_theme()
+                                            .ui
+                                            .get(&field),
+                                        "syntax" => config
+                                            .default_color_theme()
+                                            .syntax
+                                            .get(&field),
+                                        _ => None,
+                                    };
 
-                                        if default != Some(&value) {
-                                            let value = serde::Serialize::serialize(
-                                                &value,
-                                                toml_edit::ser::ValueSerializer::new(
-                                                ),
-                                            )
-                                            .ok();
+                                    if default != Some(&value) {
+                                        let value = serde::Serialize::serialize(
+                                            &value,
+                                            toml_edit::ser::ValueSerializer::new(),
+                                        )
+                                        .ok();
 
-                                            if let Some(value) = value {
-                                                LapceConfig::update_file(
-                                                    &format!("color-theme.{kind}"),
-                                                    &field,
-                                                    value,
-                                                );
-                                            }
-                                        } else {
-                                            LapceConfig::reset_setting(
+                                        if let Some(value) = value {
+                                            LapceConfig::update_file(
                                                 &format!("color-theme.{kind}"),
                                                 &field,
+                                                value,
                                             );
                                         }
+                                    } else {
+                                        LapceConfig::reset_setting(
+                                            &format!("color-theme.{kind}"),
+                                            &field,
+                                        );
                                     }
                                 }
                             });

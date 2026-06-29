@@ -212,10 +212,10 @@ impl CoreRpcHandler {
         response: Result<CoreResponse, RpcError>,
     ) {
         let tx = { self.pending.lock().remove(&id) };
-        if let Some(tx) = tx {
-            if let Err(err) = tx.send(response) {
-                tracing::error!("{:?}", err);
-            }
+        if let Some(tx) = tx
+            && let Err(err) = tx.send(response)
+        {
+            tracing::error!("{:?}", err);
         }
     }
 

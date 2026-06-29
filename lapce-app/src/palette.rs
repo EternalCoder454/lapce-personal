@@ -200,14 +200,12 @@ impl PaletteData {
                     new_items,
                     preselect_index,
                 )) = resp.get()
+                    && run_id.get_untracked() == filter_run_id
+                    && input.get_untracked().input == filter_input
                 {
-                    if run_id.get_untracked() == filter_run_id
-                        && input.get_untracked().input == filter_input
-                    {
-                        set_filtered_items.set(new_items);
-                        let i = preselect_index.unwrap_or(0);
-                        index.set(i);
-                    }
+                    set_filtered_items.set(new_items);
+                    let i = preselect_index.unwrap_or(0);
+                    index.set(i);
                 }
             });
         }
@@ -879,13 +877,13 @@ impl PaletteData {
 
     fn set_run_configs(&self, content: String) {
         let configs: Option<RunDebugConfigs> = toml::from_str(&content).ok();
-        if configs.is_none() {
-            if let Some(path) = self.workspace.path.as_ref() {
-                let path = path.join(".lapce").join("run.toml");
-                self.common
-                    .internal_command
-                    .send(InternalCommand::OpenFile { path });
-            }
+        if configs.is_none()
+            && let Some(path) = self.workspace.path.as_ref()
+        {
+            let path = path.join(".lapce").join("run.toml");
+            self.common
+                .internal_command
+                .send(InternalCommand::OpenFile { path });
         }
 
         let executed_run_configs = self.executed_run_configs.borrow();
@@ -1638,15 +1636,13 @@ impl PaletteData {
                     &input,
                     items,
                     &mut matcher,
-                ) {
-                    if let Err(err) = resp_tx.send((
-                        current_run_id,
-                        input,
-                        filtered_items,
-                        preselect_index,
-                    )) {
-                        tracing::error!("{:?}", err);
-                    }
+                ) && let Err(err) = resp_tx.send((
+                    current_run_id,
+                    input,
+                    filtered_items,
+                    preselect_index,
+                )) {
+                    tracing::error!("{:?}", err);
                 }
             } else {
                 return;

@@ -422,18 +422,18 @@ impl EditorTabData {
         path: &Path,
     ) -> Option<(usize, EditorData)> {
         for (i, child) in self.children.iter().enumerate() {
-            if let (_, _, EditorTabChild::Editor(editor_id)) = child {
-                if let Some(editor) = editors.editor_untracked(*editor_id) {
-                    let is_path = editor.doc().content.with_untracked(|content| {
-                        if let DocContent::File { path: p, .. } = content {
-                            p == path
-                        } else {
-                            false
-                        }
-                    });
-                    if is_path {
-                        return Some((i, editor));
+            if let (_, _, EditorTabChild::Editor(editor_id)) = child
+                && let Some(editor) = editors.editor_untracked(*editor_id)
+            {
+                let is_path = editor.doc().content.with_untracked(|content| {
+                    if let DocContent::File { path: p, .. } = content {
+                        p == path
+                    } else {
+                        false
                     }
+                });
+                if is_path {
+                    return Some((i, editor));
                 }
             }
         }

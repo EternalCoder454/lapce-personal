@@ -688,12 +688,10 @@ fn breakpoints_view(window_tab_data: Rc<WindowTabData>) -> impl View {
                                 breakpoints.update(|breakpoints| {
                                     if let Some(breakpoints) =
                                         breakpoints.get_mut(&full_path)
-                                    {
-                                        if let Some(breakpoint) =
+                                        && let Some(breakpoint) =
                                             breakpoints.get_mut(&line)
-                                        {
-                                            breakpoint.active = !breakpoint.active;
-                                        }
+                                    {
+                                        breakpoint.active = !breakpoint.active;
                                     }
                                 });
                             }),
