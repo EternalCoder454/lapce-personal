@@ -188,7 +188,50 @@ Do these one stage at a time, running `cargo check --workspace` (and ideally a r
 
 - The `[patch.crates-io]` block and pinned git revs unless you're intentionally doing Stage 4.
 - The `lsp-types` version (locked on purpose — see the comment in `Cargo.toml`).
-- Build/release plumbing not relevant to personal use (`docker-bake.hcl`, `lapce.spec`, distro packaging under `extra/linux`, `extra/macos`) — fine to ignore.
+- The `lsp-types` version (locked on purpose — see the comment in `Cargo.toml`).
+
+---
+
+## 5b. Performance & memory notes (2026-06-29)
+
+Measured on Windows 11, idle (no workspace open), using Task Manager's metric
+(private working set):
+
+| Build | RAM |
+| --- | --- |
+| `cargo run` (**debug**) | ~324 MB |
+| `cargo build --release` | **~226 MB** |
+| Upstream Lapce (reference) | ~240 MB |
+
+**Conclusion: the single biggest lever is building in release.** The debug binary
+carries ~100 MB of extra RAM (no optimisation + debug assertions + debuginfo). The
+release build idles *below* the upstream reference, so there's no bloat from our
+changes. For daily use, run/install a release build:
+
+```sh
+cargo run --release --bin lapce            # or --profile fastdev for dev iteration
+cargo install --path . --bin lapce --profile release-lto --locked
+```
+
+At ~226 MB the residency is dominated by the wgpu GPU renderer (glyph atlas,
+swapchain, embedded font/icon data) plus any LSP **child processes** (counted as
+separate processes — e.g. `rust-analyzer.exe` — and not reducible from here).
+
+**Ruled out (would hurt more than help):**
+- `panic = "abort"` — a panic in any worker thread (plugin/LSP/terminal/watcher)
+  would take down the whole editor instead of just that thread. Frontend-stability risk.
+- Stripping symbols (`strip = true`) — release already emits no debuginfo; this would
+  only drop the symbol table, degrading panic backtraces in the custom crash logger
+  for a disk-size-only saving (no RAM benefit).
+- `mimalloc` global allocator — possible small private-RAM win, but we're already under
+  the reference, so not worth the dependency/risk. Revisit only if a real regression appears.
+
+**Windows-only cleanup:** removed non-Windows packaging/CI artifacts (`docker-bake.hcl`,
+`.dockerignore`, `lapce.spec`, `extra/linux/`, `extra/macos/`, `extra/entitlements.plist`).
+This is repo hygiene only — it does **not** change the Windows binary or its RAM, because
+that code/data is already excluded by `#[cfg]`/target gates. Note: `extra/proxy.sh` is
+**kept** even on Windows — it's `include_bytes!`'d into the binary and uploaded to remote
+*Unix* hosts during remote development.
 
 ---
 
