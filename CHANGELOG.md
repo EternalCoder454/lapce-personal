@@ -8,6 +8,9 @@
 - Vendor `wasi-experimental-http-wasmtime` under `third_party/` and constrain its `wasmtime` requirement to `14` (was `*`, which pulled in an incompatible wasmtime 37); keeps the proxy on wasmtime 14.0.4
 - Skip the redundant PowerShell shell-environment probe on Windows GUI launches: ~3x faster startup (time-to-window ~187 ms → ~62 ms). Opt back in with `LAPCE_LOAD_SHELL_ENV=1`
 - Add `LAPCE_STARTUP_TRACE=1` to print per-phase startup timings to stderr
+- Disable the auto-updater by default (this is built from source): no startup cleanup pass and no hourly GitHub release-polling thread. Re-enable with `--features updater`
+- Replace the deprecated `slotmap::HopSlotMap` with `DenseSlotMap` in the syntax layer store
+- Fix the outstanding clippy lints across the workspace (map `.values()`, `sort_by_key`, match guards, redundant `into_iter`)
 
 ### Bug Fixes
 

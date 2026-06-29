@@ -831,7 +831,7 @@ impl PaletteData {
             .output();
 
         let distros = if let Ok(proc) = cmd {
-            let distros = String::from_utf16(bytemuck::cast_slice(&proc.stdout))
+            String::from_utf16(bytemuck::cast_slice(&proc.stdout))
                 .unwrap_or_default()
                 .lines()
                 .skip(1)
@@ -845,9 +845,7 @@ impl PaletteData {
                         .next()?;
                     Some(name.to_string())
                 })
-                .collect();
-
-            distros
+                .collect()
         } else {
             vec![]
         };

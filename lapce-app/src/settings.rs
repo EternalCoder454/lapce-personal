@@ -302,7 +302,7 @@ impl SettingsData {
                             item_height_accum += 50.0;
                         }
                         local_items.sort_by_key(|i| i.name.clone());
-                        setting_items.extend(local_items.into_iter());
+                        setting_items.extend(local_items);
                     }
                 }
             }

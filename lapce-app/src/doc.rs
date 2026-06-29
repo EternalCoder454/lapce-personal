@@ -1033,7 +1033,7 @@ impl Doc {
                 // Sort the inlay hints by their position, as the LSP does not guarantee that it will
                 // provide them in the order that they are in within the file
                 // as well, Spans does not iterate in the order that they appear
-                hints.sort_by(|left, right| left.position.cmp(&right.position));
+                hints.sort_by_key(|left| left.position);
 
                 let mut hints_span = SpansBuilder::new(len);
                 for hint in hints {

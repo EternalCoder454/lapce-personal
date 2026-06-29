@@ -88,8 +88,8 @@ impl RunDebugData {
                 (
                     path.to_path_buf(),
                     breakpoints
-                        .iter()
-                        .filter_map(|(_, b)| {
+                        .values()
+                        .filter_map(|b| {
                             if b.active {
                                 Some(SourceBreakpoint {
                                     line: b.line + 1,

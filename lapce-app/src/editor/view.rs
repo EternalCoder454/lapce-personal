@@ -1438,8 +1438,8 @@ fn editor_gutter_breakpoint_view(
                 })
                 .unwrap();
             let source_breakpoints: Vec<SourceBreakpoint> = path_breakpoints
-                .iter()
-                .filter_map(|(_, b)| {
+                .values()
+                .filter_map(|b| {
                     if b.active {
                         Some(SourceBreakpoint {
                             line: b.line + 1,
