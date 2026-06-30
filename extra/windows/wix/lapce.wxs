@@ -6,7 +6,9 @@
 -->
 <Wix xmlns="http://schemas.microsoft.com/wix/2006/wi" xmlns:util="http://schemas.microsoft.com/wix/UtilExtension">
     <Product Name="Lapce Personal" Id="*" UpgradeCode="b2e1f7a4-3c5d-4e8f-9a1b-7c6d5e4f3a2b" Language="1033" Codepage="1252" Version="0.4.6" Manufacturer="EternalCoder454">
-        <Package InstallerVersion="200" Compressed="yes" InstallScope="perMachine"/>
+        <!-- per-user install: no admin/UAC, no system-PATH broadcast (a common
+             installer-hang source). Installs to %LocalAppData%\Programs. -->
+        <Package InstallerVersion="200" Compressed="yes" InstallScope="perUser"/>
         <MajorUpgrade AllowSameVersionUpgrades="yes" DowngradeErrorMessage="A newer version of [ProductName] is already installed."/>
         <Icon Id="lapce.exe" SourceFile=".\extra\windows\lapce.ico"/>
         <WixVariable Id="WixUILicenseRtf" Value=".\extra\windows\wix\license.rtf"/>
@@ -23,8 +25,10 @@
 
         <!-- Create directories -->
         <Directory Id="TARGETDIR" Name="SourceDir">
-            <Directory Id="ProgramFiles64Folder">
-                <Directory Id="LapceProgramFiles" Name="Lapce Personal"/>
+            <Directory Id="LocalAppDataFolder">
+                <Directory Id="ProgramsFolder" Name="Programs">
+                    <Directory Id="LapceProgramFiles" Name="Lapce Personal"/>
+                </Directory>
             </Directory>
             <Directory Id="ProgramMenuFolder">
                 <Directory Id="LapceProgramMenu" Name="Lapce Personal"/>
@@ -34,7 +38,12 @@
         <!-- Application binaries -->
         <DirectoryRef Id="LapceProgramFiles">
             <Component Id="LapceExe" Guid="*">
-                <File Id="LapceExeFile" Source=".\target\release-lto\lapce.exe" Name="lapce.exe" KeyPath="yes"/>
+                <File Id="LapceExeFile" Source=".\target\release-lto\lapce.exe" Name="lapce.exe"/>
+                <!-- per-user components key off HKCU (ICE38) -->
+                <RegistryValue Root="HKCU" Key="Software\EternalCoder454\LapcePersonal" Name="exe" Type="integer" Value="1" KeyPath="yes"/>
+                <!-- per-user dirs must be cleaned up on uninstall (ICE64) -->
+                <RemoveFolder Id="RmLapceDir" Directory="LapceProgramFiles" On="uninstall"/>
+                <RemoveFolder Id="RmProgramsDir" Directory="ProgramsFolder" On="uninstall"/>
             </Component>
         </DirectoryRef>
 
@@ -49,8 +58,9 @@
 
         <DirectoryRef Id="LapceProgramFiles">
             <!-- Add to PATH -->
-            <Component Id="ModifyPathEnv" Guid="c3f2e8b5-4d6e-4f9a-ab2c-8d7e6f5a4b3c" KeyPath="yes">
-                <Environment Id="PathEnv" Value="[LapceProgramFiles]" Name="PATH" Permanent="no" Part="first" Action="set" System="yes"/>
+            <Component Id="ModifyPathEnv" Guid="c3f2e8b5-4d6e-4f9a-ab2c-8d7e6f5a4b3c">
+                <RegistryValue Root="HKCU" Key="Software\EternalCoder454\LapcePersonal" Name="path" Type="integer" Value="1" KeyPath="yes"/>
+                <Environment Id="PathEnv" Value="[LapceProgramFiles]" Name="PATH" Permanent="no" Part="first" Action="set" System="no"/>
             </Component>
         </DirectoryRef>
 
