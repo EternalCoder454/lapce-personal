@@ -1,6 +1,11 @@
 <?xml version="1.0" encoding="windows-1252"?>
+<!--
+  Personal-build installer. Uses a DISTINCT product identity (name, UpgradeCode,
+  install directory, component GUIDs) from upstream Lapce so it installs side by
+  side without touching an existing official Lapce installation.
+-->
 <Wix xmlns="http://schemas.microsoft.com/wix/2006/wi" xmlns:util="http://schemas.microsoft.com/wix/UtilExtension">
-    <Product Name="Lapce" Id="*" UpgradeCode="9c09a374-1135-4782-959f-2dec376a1dfa" Language="1033" Codepage="1252" Version="0.4.6" Manufacturer="Lapce">
+    <Product Name="Lapce Personal" Id="*" UpgradeCode="b2e1f7a4-3c5d-4e8f-9a1b-7c6d5e4f3a2b" Language="1033" Codepage="1252" Version="0.4.6" Manufacturer="EternalCoder454">
         <Package InstallerVersion="200" Compressed="yes" InstallScope="perMachine"/>
         <MajorUpgrade AllowSameVersionUpgrades="yes" DowngradeErrorMessage="A newer version of [ProductName] is already installed."/>
         <Icon Id="lapce.exe" SourceFile=".\extra\windows\lapce.ico"/>
@@ -9,7 +14,7 @@
         <MediaTemplate EmbedCab="yes"/>
         <UIRef Id="WixUI_Minimal"/>
 
-        <Feature Id="ProductFeature" Title="ConsoleApp" Level="1">
+        <Feature Id="ProductFeature" Title="Lapce Personal" Level="1">
             <ComponentRef Id="LapceExe"/>
             <ComponentRef Id="LapceShortcut"/>
             <ComponentRef Id="ModifyPathEnv"/>
@@ -19,10 +24,10 @@
         <!-- Create directories -->
         <Directory Id="TARGETDIR" Name="SourceDir">
             <Directory Id="ProgramFiles64Folder">
-                <Directory Id="LapceProgramFiles" Name="Lapce"/>
+                <Directory Id="LapceProgramFiles" Name="Lapce Personal"/>
             </Directory>
             <Directory Id="ProgramMenuFolder">
-                <Directory Id="LapceProgramMenu" Name="Lapce"/>
+                <Directory Id="LapceProgramMenu" Name="Lapce Personal"/>
             </Directory>
         </Directory>
 
@@ -35,27 +40,27 @@
 
         <DirectoryRef Id="LapceProgramMenu">
             <!-- Application shortcut -->
-            <Component Id="LapceShortcut" Guid="7d3d3a8e-febb-4759-8eca-873676d5066a">
-                <Shortcut Id="LapceShortcutFile" Icon="lapce.exe" Name="Lapce" Description="Lightning-fast and Powerful Code Editor" Target="[LapceProgramFiles]lapce.exe"/>
+            <Component Id="LapceShortcut" Guid="a1b2c3d4-1111-4222-8333-444455556666">
+                <Shortcut Id="LapceShortcutFile" Icon="lapce.exe" Name="Lapce Personal" Description="Personal build of the Lapce code editor" Target="[LapceProgramFiles]lapce.exe"/>
                 <RemoveFolder Id="LapceProgramMenu" On="uninstall"/>
-                <RegistryValue Root="HKCU" Key="Software\Microsoft\Lapce" Name="installed" Type="integer" Value="1" KeyPath="yes"/>
+                <RegistryValue Root="HKCU" Key="Software\EternalCoder454\LapcePersonal" Name="installed" Type="integer" Value="1" KeyPath="yes"/>
             </Component>
         </DirectoryRef>
 
         <DirectoryRef Id="LapceProgramFiles">
             <!-- Add to PATH -->
-            <Component Id="ModifyPathEnv" Guid="0581ccb0-5db8-4935-8b07-8f46bc2d7171" KeyPath="yes">
+            <Component Id="ModifyPathEnv" Guid="c3f2e8b5-4d6e-4f9a-ab2c-8d7e6f5a4b3c" KeyPath="yes">
                 <Environment Id="PathEnv" Value="[LapceProgramFiles]" Name="PATH" Permanent="no" Part="first" Action="set" System="yes"/>
             </Component>
         </DirectoryRef>
 
         <DirectoryRef Id="TARGETDIR">
             <!-- Add context menu -->
-            <Component Id="ContextMenu" Guid="22ad399b-1d77-416c-ae33-57e8f8511177">
-                <RegistryKey Root="HKCU" Key="Software\Classes\Directory\Background\shell\Open Lapce here\command">
+            <Component Id="ContextMenu" Guid="d4a3f9c6-5e7f-4abb-bc3d-9e8f7a6b5c4d">
+                <RegistryKey Root="HKCU" Key="Software\Classes\Directory\Background\shell\Open Lapce Personal here\command">
                     <RegistryValue Type="string" Value="[LapceProgramFiles]lapce.exe &quot;%V&quot;" KeyPath="yes"/>
                 </RegistryKey>
-                <RegistryKey Root="HKCU" Key="Software\Classes\Directory\Background\shell\Open Lapce here">
+                <RegistryKey Root="HKCU" Key="Software\Classes\Directory\Background\shell\Open Lapce Personal here">
                     <RegistryValue Type="string" Name="Icon" Value="[LapceProgramFiles]lapce.exe"/>
                 </RegistryKey>
             </Component>
