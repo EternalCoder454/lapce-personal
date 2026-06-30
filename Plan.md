@@ -356,9 +356,14 @@ waits — Lapce has ~10, so converting would be a huge rewrite for no speedup. T
   is the expensive part, and that is parallelized. Left sequential on purpose.
 
 **Candidate next steps (not done — risk/▽value):**
-- **PGO** (profile-guided optimization): build instrumented → run a representative
-  session → rebuild with the profile. Typically 5–15% on the hot paths, but it's a
-  multi-step build, not a one-shot flag.
+- **PGO** (profile-guided optimization): a working build script ships at
+  `scripts/build-pgo.ps1` (instrument → train on benches + a graceful editor session →
+  rebuild with the profile). **Measured on the search hot path: 755 µs non-PGO vs 786 µs
+  PGO — no benefit (slightly slower, within noise).** Expected: that path is I/O-bound and
+  already parallel + SIMD-optimized, so there's little branch/layout for PGO to win. It's
+  kept as an opt-in script (not baked into the default build, which would also hurt
+  reproducibility); it may still help CPU-bound editing/syntax paths under a real-usage
+  training run — worth trying with your own workflow as the profile.
 - Allocation trims in search result building, `Cow<str>` for symbol parents,
   `SmallVec` for palette match indices — small, local wins.
 
