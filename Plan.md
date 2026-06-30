@@ -347,11 +347,15 @@ one per LSP/terminal/plugin). Async (tokio) wins when you juggle *thousands* of 
 waits — Lapce has ~10, so converting would be a huge rewrite for no speedup. The lever is
 **parallelism** (rayon over CPU-bound, independent work), not async.
 
+**Measured and rejected:**
+- **Parallel directory walk** (`ignore::Walk` → `WalkBuilder::build_parallel`).
+  Benchmarked seq vs parallel over the repo tree: **4.23 ms sequential vs 5.22 ms
+  parallel (~23% slower)**. Listing files is syscall-bound and the `ignore` crate's
+  sequential walk is already well-optimized; thread-coordination overhead makes the
+  parallel version a regression for typical trees. Reading file *contents* (search)
+  is the expensive part, and that is parallelized. Left sequential on purpose.
+
 **Candidate next steps (not done — risk/▽value):**
-- **Parallel directory walk** feeding search (`dispatch.rs:471`, `ignore::Walk` →
-  `WalkBuilder::build_parallel`). Lower value (listing files is cheap vs reading their
-  contents, which is already parallel) and would need a sort to keep result order
-  deterministic.
 - **PGO** (profile-guided optimization): build instrumented → run a representative
   session → rebuild with the profile. Typically 5–15% on the hot paths, but it's a
   multi-step build, not a one-shot flag.
