@@ -10,6 +10,7 @@ default-run  = "lapce"
 [dependencies]
 lapce-app   = { path = "./lapce-app" }
 lapce-proxy = { path = "./lapce-proxy" }
+mimalloc    = { version = "0.1" }            # global allocator for the lapce/lapce-proxy bins
 
 [[bin]]
 name = "lapce"

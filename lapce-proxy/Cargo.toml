@@ -41,6 +41,7 @@ floem-editor-core = { workspace = true }
 # proxy specific dependencies
 
 dyn-clone    = "1.0.16"
+mimalloc     = "0.1"
 walkdir      = "2.4.0"
 jsonrpc-lite = "0.6.0"
 polling      = "3.5.0"
