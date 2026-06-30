@@ -324,6 +324,40 @@ pipes (`fd_read fd=0` / `fd_write fd=1` in the logs) with zero traps/panics.
 > `if let X { if y }` patterns (let-chains are now stable) — a separate, mechanical
 > cleanup (`cargo clippy --fix`), unrelated to this upgrade.
 
+## 5e. CPU / parallelism perf (2026-06-29)
+
+Targeting CPU/throughput (RAM is already good). Measured with the `visual_line`
+bench and a new `search` bench (`cargo bench -p lapce-proxy --bench search`).
+
+**Done & measured:**
+- **`target-cpu=x86-64-v3`** (`.cargo/config.toml`) — lets the compiler use AVX2/FMA/
+  BMI, a SIMD baseline every Win11-capable CPU supports (portable, not host-locked).
+  ~3–5% on the heavier `visual_line` layout ops; noise on trivial ns-scale ones.
+- **mimalloc** as `#[global_allocator]` for both bins — faster than the Windows system
+  heap on allocation-heavy paths (rope/syntax/search/fuzzy). (Not captured by the
+  benches, which are separate binaries without the global allocator.)
+- **Parallel global search** (`lapce-proxy/src/dispatch.rs` `search_in_path`) — files are
+  searched independently across the rayon pool (`par_iter().map_init(|| Searcher, …)`),
+  results collected in path order. **3.32 ms → 755 µs (~4.4×)** on lapce-app/src;
+  scales further on bigger trees. Per-file logic is byte-for-byte identical to the old
+  sequential version, so results are unchanged.
+
+**Why not "more async":** the proxy is OS-thread + crossbeam based (≈tens of threads:
+one per LSP/terminal/plugin). Async (tokio) wins when you juggle *thousands* of idle I/O
+waits — Lapce has ~10, so converting would be a huge rewrite for no speedup. The lever is
+**parallelism** (rayon over CPU-bound, independent work), not async.
+
+**Candidate next steps (not done — risk/▽value):**
+- **Parallel directory walk** feeding search (`dispatch.rs:471`, `ignore::Walk` →
+  `WalkBuilder::build_parallel`). Lower value (listing files is cheap vs reading their
+  contents, which is already parallel) and would need a sort to keep result order
+  deterministic.
+- **PGO** (profile-guided optimization): build instrumented → run a representative
+  session → rebuild with the profile. Typically 5–15% on the hot paths, but it's a
+  multi-step build, not a one-shot flag.
+- Allocation trims in search result building, `Cow<str>` for symbol parents,
+  `SmallVec` for palette match indices — small, local wins.
+
 ## 6. Personalisation backlog (ideas)
 
 Since this is a personal fork, candidate tweaks to make it mine:

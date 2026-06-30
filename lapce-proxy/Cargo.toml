@@ -55,6 +55,7 @@ ignore        = "0.4"
 grep-searcher = "0.1"
 grep-matcher  = "0.1"
 grep-regex    = "0.1"
+rayon         = { workspace = true }
 
 # wasm
 wasmtime         = "46.0.0"
@@ -71,3 +72,10 @@ path = "../third_party/wasi-experimental-http-wasmtime"
 [target.'cfg(target_os = "macos")'.dependencies.locale_config]
 git    = "https://github.com/lapce/locale_config.git"
 branch = "lapce"
+
+[dev-dependencies]
+criterion = "0.5"
+
+[[bench]]
+name    = "search"
+harness = false

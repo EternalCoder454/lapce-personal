@@ -12,6 +12,8 @@
 - Replace the deprecated `slotmap::HopSlotMap` with `DenseSlotMap` in the syntax layer store
 - Fix the outstanding clippy lints across the workspace (map `.values()`, `sort_by_key`, match guards, redundant `into_iter`)
 - Bump MSRV 1.87 → 1.88 and update `time` 0.3.45 → 0.3.51, clearing RUSTSEC-2026-0009 (DoS via stack exhaustion)
+- Parallelize global search: each file is searched independently across the rayon thread pool (`search_in_path`), keeping results in path order. ~4.4x faster on the editor's own source tree (3.32 ms → 755 µs), scaling further on larger codebases. Added a `search` benchmark as a regression guard
+- Performance: build with `target-cpu=x86-64-v3` (AVX2/FMA/BMI; portable across Win11 CPUs) and use **mimalloc** as the global allocator for both binaries
 - Upgrade wasmtime 14 → 46 (latest stable). Ported the WASI plugin host (`lapce-proxy/src/plugin/wasi.rs`) to the wasmtime 46 preview1 API with a custom shared stdio pipe, and ported the vendored `wasi-experimental-http-wasmtime` crate. Clears all ~17 outstanding wasmtime/wasi security advisories (including 2 rated critical). Runtime-verified: the `lapce-go` WASM plugin loads and completes its LSP initialize handshake
 
 ### Bug Fixes

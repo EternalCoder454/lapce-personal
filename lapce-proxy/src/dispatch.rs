@@ -1674,7 +1674,7 @@ fn git_get_remote_file_url(workspace_path: &Path, file: &Path) -> Result<String>
     Ok(url)
 }
 
-fn search_in_path(
+pub fn search_in_path(
     id: u64,
     current_id: &AtomicU64,
     paths: impl Iterator<Item = PathBuf>,
@@ -1683,7 +1683,8 @@ fn search_in_path(
     whole_word: bool,
     is_regex: bool,
 ) -> Result<ProxyResponse, RpcError> {
-    let mut matches = IndexMap::new();
+    use rayon::prelude::*;
+
     let mut matcher = RegexMatcherBuilder::new();
     let matcher = matcher.case_insensitive(!case_sensitive).word(whole_word);
     let matcher = if is_regex {
@@ -1695,67 +1696,76 @@ fn search_in_path(
         code: 0,
         message: "can't build matcher".to_string(),
     })?;
-    let mut searcher = SearcherBuilder::new().build();
+    // Searching each file is independent ("embarrassingly parallel"), so fan the
+    // files out across the rayon thread pool. `map_init` gives each worker its own
+    // reusable `Searcher`; the ordered `collect` keeps results in input (path)
+    // order so the results panel looks identical to the old sequential version.
+    let paths: Vec<PathBuf> = paths.collect();
+    let results: Vec<(PathBuf, Vec<SearchMatch>)> = paths
+        .par_iter()
+        .filter(|path| path.is_file())
+        .map_init(
+            || SearcherBuilder::new().build(),
+            |searcher, path| {
+                let mut line_matches = Vec::new();
+                // Skip work for a superseded job; the final check below reports it.
+                if current_id.load(Ordering::SeqCst) == id
+                    && let Err(err) = searcher.search_path(
+                        &matcher,
+                        path,
+                        UTF8(|lnum, line| {
+                            if current_id.load(Ordering::SeqCst) != id {
+                                return Ok(false);
+                            }
 
-    for path in paths {
-        if current_id.load(Ordering::SeqCst) != id {
-            return Err(RpcError {
-                code: 0,
-                message: "expired search job".to_string(),
-            });
-        }
-
-        if path.is_file() {
-            let mut line_matches = Vec::new();
-            if let Err(err) = searcher.search_path(
-                &matcher,
-                path.clone(),
-                UTF8(|lnum, line| {
-                    if current_id.load(Ordering::SeqCst) != id {
-                        return Ok(false);
-                    }
-
-                    let mymatch = matcher.find(line.as_bytes())?.unwrap();
-                    let line = if line.len() > 200 {
-                        // Shorten the line to avoid sending over absurdly long-lines
-                        // (such as in minified javascript)
-                        // Note that the start/end are column based, not absolute from the
-                        // start of the file.
-                        let left_keep = line[..mymatch.start()]
-                            .chars()
-                            .rev()
-                            .take(100)
-                            .map(|c| c.len_utf8())
-                            .sum::<usize>();
-                        let right_keep = line[mymatch.end()..]
-                            .chars()
-                            .take(100)
-                            .map(|c| c.len_utf8())
-                            .sum::<usize>();
-                        let display_range =
-                            mymatch.start() - left_keep..mymatch.end() + right_keep;
-                        line[display_range].to_string()
-                    } else {
-                        line.to_string()
-                    };
-                    line_matches.push(SearchMatch {
-                        line: lnum as usize,
-                        start: mymatch.start(),
-                        end: mymatch.end(),
-                        line_content: line,
-                    });
-                    Ok(true)
-                }),
-            ) {
+                            let mymatch = matcher.find(line.as_bytes())?.unwrap();
+                            let line = if line.len() > 200 {
+                                // Shorten the line to avoid sending over absurdly
+                                // long lines (such as in minified javascript).
+                                // start/end are column based, not absolute from the
+                                // start of the file.
+                                let left_keep = line[..mymatch.start()]
+                                    .chars()
+                                    .rev()
+                                    .take(100)
+                                    .map(|c| c.len_utf8())
+                                    .sum::<usize>();
+                                let right_keep = line[mymatch.end()..]
+                                    .chars()
+                                    .take(100)
+                                    .map(|c| c.len_utf8())
+                                    .sum::<usize>();
+                                let display_range = mymatch.start() - left_keep
+                                    ..mymatch.end() + right_keep;
+                                line[display_range].to_string()
+                            } else {
+                                line.to_string()
+                            };
+                            line_matches.push(SearchMatch {
+                                line: lnum as usize,
+                                start: mymatch.start(),
+                                end: mymatch.end(),
+                                line_content: line,
+                            });
+                            Ok(true)
+                        }),
+                    )
                 {
                     tracing::error!("{:?}", err);
                 }
-            }
-            if !line_matches.is_empty() {
-                matches.insert(path.clone(), line_matches);
-            }
-        }
+                (path.clone(), line_matches)
+            },
+        )
+        .filter(|(_, line_matches)| !line_matches.is_empty())
+        .collect();
+
+    if current_id.load(Ordering::SeqCst) != id {
+        return Err(RpcError {
+            code: 0,
+            message: "expired search job".to_string(),
+        });
     }
 
+    let matches: IndexMap<PathBuf, Vec<SearchMatch>> = results.into_iter().collect();
     Ok(ProxyResponse::GlobalSearchResponse { matches })
 }
